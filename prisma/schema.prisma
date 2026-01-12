@@ -1,0 +1,139 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Region {
+  id       String  @id @default(cuid())
+  nameUz   String
+  nameRu   String?
+  code     String  @unique
+  geometry Json
+  center   Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  districts District[]
+
+  @@index([nameUz])
+  @@map("regions")
+}
+
+model District {
+  id       String  @id @default(cuid())
+  regionId String
+  nameUz   String
+  nameRu   String?
+  code     String  @unique
+  geometry Json
+  center   Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  region     Region     @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  mahallas   Mahalla[]
+  streets    Street[]
+  properties Property[]
+
+  @@index([nameUz])
+  @@map("districts")
+}
+
+model Mahalla {
+  id       String  @id @default(cuid())
+  nameUz   String
+  nameRu   String?
+  code     String  @unique
+  geometry Json
+  center   Json?
+
+  uzKadName String?
+  geoCode   String?
+  oneId     String?
+
+  hidden         Boolean @default(false)
+  mergedIntoId   String?
+  mergedIntoName String?
+
+  district   District @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  districtId String
+
+  streets Street[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([nameUz])
+  @@index([hidden])
+  @@map("mahallas")
+}
+
+model Street {
+  id       String  @id @default(cuid())
+  nameUz   String
+  nameRu   String?
+  code     String  @unique
+  geometry Json
+  center   Json?
+
+  type      String
+  oldNameId String?
+  oldName   String?
+
+  mahalla    Mahalla  @relation(fields: [mahallaId], references: [code], onDelete: Cascade)
+  mahallaId  String
+  district   District @relation(fields: [districtId], references: [id])
+  districtId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([nameUz])
+  @@map("streets")
+}
+
+model Property {
+  id      String  @id @default(cuid())
+  owner   String?
+  address String?
+  type    String?
+
+  districtName   String?
+  districtNameUz String?
+  streetName     String?
+  houseNumber    String?
+
+  ownership       String?
+  ownershipType   String?
+  ownershipDate   String?
+  ownershipNumber String?
+
+  cadastralValue  String?
+  cadastralNumber String?
+  areaInDoc       String?
+  areaReal        String?
+  mahalla         String?
+
+  geometry Json
+  center   Json?
+
+  districtId String?
+  district   District? @relation(fields: [districtId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("properties")
+}
