@@ -62,10 +62,13 @@ model Mahalla {
   uzKadName String?
   geoCode   String?
   oneId     String?
+  regulation String?
+  oldName    String?
 
   hidden         Boolean @default(false)
   mergedIntoId   String?
   mergedIntoName String?
+  regulationUrl  String?
 
   district   District @relation(fields: [districtId], references: [id], onDelete: Cascade)
   districtId String
