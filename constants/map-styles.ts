@@ -25,6 +25,12 @@ export const MAP_LEVEL_STYLES = {
     weight: 5, // Increased from 3 to 5 for better clickability
     opacity: 0.8,
   },
+  streetPolygon: {
+    fillColor: 'oklch(45.5% 0.188 13.697)', // Same as border color
+    weight: 2,
+    fillOpacity: 0.8,
+    color: 'oklch(45.5% 0.188 13.697)',
+  },
    property: {
     fillColor: '#6366f1',
     weight: 1,
@@ -52,9 +58,16 @@ export const MAP_LEVEL_STYLES = {
       color: '#b45309',
     },
     street: {
-      color: '#f59e0b', // Vibrant amber for high visibility selection
-      weight: 8, // Increased from 6 to 8 for a powerful highlight
+      color: '#f59e0b', 
+      weight: 8, 
       opacity: 1,
+    },
+    streetPolygon: {
+      fillColor: '#3b82f6', 
+      weight: 2, 
+      opacity: 1,
+      color: '#3b82f6',
+      fillOpacity: 1,
     },
   },
   satellite: {
@@ -85,6 +98,23 @@ export const MAP_LEVEL_STYLES = {
         weight: 6,
         color: '#60a5fa', // Highlight blue
       }
+    }
+  },
+  // Address generation styles
+  addressing: {
+    centerline: {
+      color: '#ffffff',
+      weight: 3,
+      opacity: 1,
+      dashArray: '10, 10', // Dashed line
+    },
+    addressMarker: {
+      radius: 4,
+      fillColor: '#ffffff',
+      color: '#000000',
+      weight: 1,
+      opacity: 1,
+      fillOpacity: 0.9,
     }
   }
 };

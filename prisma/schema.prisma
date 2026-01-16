@@ -45,6 +45,7 @@ model District {
   region     Region     @relation(fields: [regionId], references: [id], onDelete: Cascade)
   mahallas   Mahalla[]
   streets    Street[]
+  streetPolygons StreetPolygone[]
   properties Property[]
 
   @@index([nameUz])
@@ -74,6 +75,7 @@ model Mahalla {
   districtId String
 
   streets Street[]
+  streetPolygons StreetPolygone[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -107,6 +109,27 @@ model Street {
   @@map("streets")
 }
 
+model StreetPolygone {
+  id       String  @id @default(cuid())
+  nameUz   String
+
+  code     String  @unique
+  type     String
+  geometry Json
+
+  district   District @relation(fields: [districtId], references: [id])
+  districtId String
+  mahalla    Mahalla  @relation(fields: [mahallaId], references: [id], onDelete: Cascade)
+  mahallaId  String
+
+  addressing StreetAddressing?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("street_polygons")
+}
+
 model Property {
   id      String  @id @default(cuid())
   owner   String?
@@ -132,6 +155,7 @@ model Property {
   geometry Json
   center   Json?
 
+
   districtId String?
   district   District? @relation(fields: [districtId], references: [id], onDelete: Cascade)
 
@@ -139,4 +163,25 @@ model Property {
   updatedAt DateTime @updatedAt
 
   @@map("properties")
+}
+
+model StreetAddressing {
+  id       String  @id @default(cuid())
+  
+  streetPolygonId String @unique
+  streetPolygon   StreetPolygone @relation(fields: [streetPolygonId], references: [id], onDelete: Cascade)
+  
+  centerline      Json    // LineString geometry
+  addressPoints   Json    // Array of address points with positions and numbers
+  crossLines      Json    @default("[]") // Array of cross lines
+  
+  intervalMeters  Int     @default(20)
+  offsetMeters    Float   @default(5)
+  startNumber     Int     @default(0)
+  totalLength     Float   // Total length of centerline in meters
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("street_addressing")
 }

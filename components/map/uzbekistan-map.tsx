@@ -15,11 +15,13 @@ import { getGlobalStatistics, getRegionStatistics, getDistrictStatistics } from 
 import type { RegionData, PropertyData } from '@/types/map';
 import L from 'leaflet';
 import type { Map as LeafletMap } from 'leaflet';
-import { useMapEvents, Popup } from 'react-leaflet';
+import { useMapEvents, Popup, Marker, Polyline, FeatureGroup } from 'react-leaflet';
 import { LayoutDashboard, Map as MapIcon, Navigation, Home, Waypoints, Loader2, CaseSensitive } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import * as turf from '@turf/turf';
-import { Marker } from 'react-leaflet';
+import { AddressGenerationDialog } from './address-generation-dialog';
+import { generatePolygonAddressing, type AddressPoint, type CrossLine } from '@/lib/address-generator';
+import type { LineString } from 'geojson';
 
 // Component to handle zoom-dependent classes
 const MapZoomListener = ({ onChange }: { onChange: (zoom: number) => void }) => {
@@ -53,6 +55,12 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
   const [isInitializing, setIsInitializing] = useState(true);
   const [properties, setProperties] = useState<PropertyData[]>([]);
   const [isLoadingProperties, setIsLoadingProperties] = useState(false);
+  const [streetPolygons, setStreetPolygons] = useState<any[]>([]);
+  const [selectedStreetPolygon, setSelectedStreetPolygon] = useState<string>("");
+  const [showAddressDialog, setShowAddressDialog] = useState(false);
+  const [selectedPolygonForAddressing, setSelectedPolygonForAddressing] = useState<any>(null);
+  const [generatedCrossLines, setGeneratedCrossLines] = useState<CrossLine[]>([]);
+  const [generatedAddresses, setGeneratedAddresses] = useState<AddressPoint[]>([]);
   const propertyLabelsRef = React.useRef<L.LayerGroup>(L.layerGroup());
   
   const filterState = useMapFilters();
@@ -150,6 +158,10 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
         const sPane = mapInstance.createPane('streetsPane');
         sPane.style.zIndex = '400';
       }
+      if (!mapInstance.getPane('streetPolygonsPane')) {
+        const spPane = mapInstance.createPane('streetPolygonsPane');
+        spPane.style.zIndex = '375'; // Between mahallas (350) and streets (400)
+      }
       if (!mapInstance.getPane('propertiesPane')) {
         const pPane = mapInstance.createPane('propertiesPane');
         pPane.style.zIndex = '450';
@@ -165,6 +177,7 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
   const selectedMahallaRef = useRef(filterState.selectedMahalla);
   const selectedStreetRef = useRef(filterState.selectedStreet);
   const selectedPropertyRef = useRef(filterState.selectedProperty);
+  const selectedStreetPolygonRef = useRef(selectedStreetPolygon);
 
   // Sync refs with state
   useEffect(() => {
@@ -178,6 +191,10 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
   useEffect(() => {
     selectedPropertyRef.current = filterState.selectedProperty;
   }, [filterState.selectedProperty]);
+
+  useEffect(() => {
+    selectedStreetPolygonRef.current = selectedStreetPolygon;
+  }, [selectedStreetPolygon]);
 
   // Handle Property Labels (Simple zoom-based approach)
   const handlePropertyLabels = useCallback(() => {
@@ -387,8 +404,8 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
         );
       }
 
-      // Render Streets at District level if available
-      if (filterState.streets.length > 0) {
+      // Render Streets at District level if available and showStreets is true
+      if (filterState.streets.length > 0 && filterState.showStreets) {
         renderLayer('streets', filterState.streets, 
           (feature: any) => 
             feature.properties.id === filterState.selectedStreet 
@@ -419,13 +436,30 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
             });
             layer.getElement()?.style.setProperty('cursor', 'pointer');
           },
-          filterState.showStreetLabels ? 'nameUz' : undefined, 
+          (filterState.showStreets && filterState.showStreetLabels) ? 'nameUz' : undefined, 
           'street-label',
           true, // bringToFront
           'streetsPane'
         );
+      } else if (filterState.streets.length > 0 && !filterState.showStreets) {
+        // Clear streets layer when showStreets is false
+        clearLayer('streets');
       }
       
+      // Fetch street polygons when district changes
+      const fetchStreetPolygons = async () => {
+        try {
+          const response = await fetch(`/api/street-polygons?districtId=${filterState.selectedDistrict}`);
+          if (response.ok) {
+            const data = await response.json();
+            setStreetPolygons(data);
+          }
+        } catch (error) {
+          console.error("Error fetching street polygons:", error);
+        }
+      };
+      fetchStreetPolygons();
+
       // Fetch properties when district changes
       const fetchProperties = async () => {
         setIsLoadingProperties(true);
@@ -443,11 +477,78 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
       };
       fetchProperties();
     } else {
-      clearLayers(['mahallas', 'streets']);
+      clearLayers(['mahallas', 'streets', 'streetPolygons']);
       setProperties([]);
+      setStreetPolygons([]);
     }
     // Only re-run when DATA or VISIBILITY changes
-  }, [filterState.selectedDistrict, filterState.mahallas.length, filterState.streets.length, filterState.showStreetLabels, renderLayer, zoomToGeometry, filterState.districts, clearLayers]);
+  }, [filterState.selectedDistrict, filterState.mahallas.length, filterState.streets.length, filterState.showStreets, filterState.showStreetLabels, renderLayer, zoomToGeometry, filterState.districts, clearLayers]);
+
+  // 3b. Render Street Polygons when data is available
+  useEffect(() => {
+    if (mapInstance && filterState.selectedDistrict && streetPolygons.length > 0) {
+      renderLayer('streetPolygons', streetPolygons,
+        (feature: any) => {
+          const isSelected = feature.properties.id === selectedStreetPolygon;
+          return isSelected ? MAP_LEVEL_STYLES.highlight.streetPolygon : MAP_LEVEL_STYLES.streetPolygon;
+        },
+        (feature: any, layer: any) => {
+          layer.on({
+            click: async (e: any) => {
+              L.DomEvent.stopPropagation(e);
+              setSelectedStreetPolygon(feature.properties.id);
+              
+              // Store both properties and geometry
+              setSelectedPolygonForAddressing({
+                ...feature.properties,
+                geometry: feature.geometry
+              });
+              
+              // Try to load existing addressing
+              try {
+                const response = await fetch(`/api/street-addressing?streetPolygonId=${feature.properties.id}`);
+                if (response.ok) {
+                  const addressing = await response.json();
+                  setGeneratedCrossLines(addressing.crossLines || []);
+                  setGeneratedAddresses(addressing.addressPoints);
+                  console.log('✅ Loaded existing addressing');
+                } else {
+                  // No existing addressing, clear previous data
+                  setGeneratedCrossLines([]);
+                  setGeneratedAddresses([]);
+                }
+              } catch (error) {
+                console.log('No existing addressing found');
+                setGeneratedCrossLines([]);
+                setGeneratedAddresses([]);
+              }
+              
+              setShowAddressDialog(true);
+            },
+            mouseover: (e: any) => {
+              const isSelected = feature.properties.id === selectedStreetPolygonRef.current;
+              if (!isSelected) {
+                e.target.setStyle(MAP_LEVEL_STYLES.highlight.streetPolygon);
+              }
+            },
+            mouseout: (e: any) => {
+              const isSelected = feature.properties.id === selectedStreetPolygonRef.current;
+              if (!isSelected) {
+                e.target.setStyle(MAP_LEVEL_STYLES.streetPolygon);
+              }
+            }
+          });
+          layer.getElement()?.style.setProperty('cursor', 'pointer');
+        },
+        undefined,
+        undefined,
+        false,
+        'streetPolygonsPane'
+      );
+    } else {
+      clearLayer('streetPolygons');
+    }
+  }, [mapInstance, filterState.selectedDistrict, streetPolygons, selectedStreetPolygon, renderLayer, clearLayer]);
 
   // 3c. Render Property Polygons
   useEffect(() => {
@@ -572,6 +673,55 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
     }
   }, [filterState.mahallas, filterState.setSelectedMahalla, zoomToGeometry]);
 
+  // Handle address generation
+  const handleGenerateAddresses = useCallback(async (options: {
+    intervalMeters: number;
+    offsetMeters: number;
+    startNumber: number;
+    reverseDirection: boolean;
+  }) => {
+    if (!selectedPolygonForAddressing || !selectedPolygonForAddressing.geometry) {
+      console.error('No polygon selected for addressing');
+      return;
+    }
+
+    try {
+      // Generate addressing
+      const result = generatePolygonAddressing(
+        selectedPolygonForAddressing.geometry,
+        options
+      );
+
+      // Save to database
+      const response = await fetch('/api/street-addressing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          streetPolygonId: selectedPolygonForAddressing.id,
+          centerline: result.centerline,
+          addressPoints: result.addressPoints,
+          crossLines: result.crossLines,
+          intervalMeters: options.intervalMeters,
+          offsetMeters: options.offsetMeters,
+          startNumber: options.startNumber,
+          totalLength: result.totalLength,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save addressing to database');
+      }
+
+      // Update UI
+      setGeneratedCrossLines(result.crossLines);
+      setGeneratedAddresses(result.addressPoints);
+      
+      console.log('✅ Addressing generated and saved:', result);
+    } catch (error) {
+      console.error('Error generating addresses:', error);
+    }
+  }, [selectedPolygonForAddressing]);
+
   return (
     <div className={`relative w-full h-full ${zoomLevel >= 16 ? 'zoom-detailed' : ''}`}>
       <MapFilters 
@@ -606,6 +756,25 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
             </TooltipTrigger>
             <TooltipContent side="right" className="font-medium">
               {filterState.showProperties ? "Ko'chmas mulklarni yashirish" : "Ko'chmas mulklarni ko'rsatish"}
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Toggle Streets (Lines and Labels) */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => filterState.setShowStreets(!filterState.showStreets)}
+                className={`p-2.5 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-all duration-300 hover:scale-110 active:scale-95 border-2 ${
+                  !filterState.showStreets 
+                    ? 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-md text-slate-400 border-transparent opacity-80' 
+                    : 'bg-white dark:bg-slate-800 text-purple-500 border-purple-200 dark:border-purple-900/50 ring-4 ring-purple-500/10'
+                }`}
+              >
+                <Waypoints className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">
+              {filterState.showStreets ? "Ko'chalarni yashirish" : "Ko'chalarni ko'rsatish"}
             </TooltipContent>
           </Tooltip>
 
@@ -675,6 +844,54 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
       >
         <MapZoomListener onChange={setZoomLevel} />
         
+        {/* Render cross lines every 20m */}
+        <FeatureGroup>
+          {generatedCrossLines.map((crossLine) => (
+            <Polyline
+              key={crossLine.id}
+              positions={[
+                [crossLine.start[1], crossLine.start[0]],
+                [crossLine.end[1], crossLine.end[0]]
+              ]}
+              pathOptions={{
+                color: '#ffffff',
+                weight: 2,
+                opacity: 0.9,
+              }}
+            />
+          ))}
+        </FeatureGroup>
+
+        {/* Render generated address points */}
+        {generatedAddresses.map((addr) => {
+          const icon = L.divIcon({
+            className: 'address-label-marker',
+            html: `<div style="
+              background: white;
+              border: 1px solid black;
+              border-radius: 50%;
+              width: 24px;
+              height: 24px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 11px;
+              font-weight: bold;
+              color: black;
+            ">${addr.number}</div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          });
+
+          return (
+            <Marker
+              key={addr.id}
+              position={[addr.position[1], addr.position[0]]}
+              icon={icon}
+            />
+          );
+        })}
+        
         {showStreetPopup && filterState.selectedStreet && streetPopupPos && streetDetails && (
           <>
             <Popup 
@@ -738,6 +955,14 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
           </div>
         </div>
       )}
+
+      {/* Address Generation Dialog */}
+      <AddressGenerationDialog
+        open={showAddressDialog}
+        onOpenChange={setShowAddressDialog}
+        polygonData={selectedPolygonForAddressing}
+        onGenerate={handleGenerateAddresses}
+      />
     </div>
   );
 }

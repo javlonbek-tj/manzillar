@@ -15,6 +15,7 @@ export function useMapFilters() {
   const [selectedStreet, setSelectedStreet] = useState<string>("");
   const [selectedProperty, setSelectedProperty] = useState<string>("");
   const [showProperties, setShowProperties] = useState(true);
+  const [showStreets, setShowStreets] = useState(true);
   const [showStreetLabels, setShowStreetLabels] = useState(true);
   const [showPropertyLabels, setShowPropertyLabels] = useState(true);
   
@@ -78,6 +79,8 @@ export function useMapFilters() {
     setSelectedProperty,
     showProperties,
     setShowProperties,
+    showStreets,
+    setShowStreets,
     showStreetLabels,
     setShowStreetLabels,
     showPropertyLabels,

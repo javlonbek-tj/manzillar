@@ -10,6 +10,7 @@ export function useMapLayers(map: LeafletMap | null) {
     districts?: GeoJSON;
     mahallas?: GeoJSON;
     streets?: GeoJSON;
+    streetPolygons?: GeoJSON;
     property?: GeoJSON;
   }>({});
 

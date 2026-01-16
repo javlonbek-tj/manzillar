@@ -7,7 +7,7 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
-    seed: 'tsx prisma/seed/update-optimization.ts',
+    seed: 'tsx prisma/seed/street-polygone.ts',
   },
   datasource: {
     url: process.env["DATABASE_URL"],
