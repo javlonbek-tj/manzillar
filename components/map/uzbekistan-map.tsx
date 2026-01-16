@@ -23,12 +23,21 @@ import { AddressGenerationDialog } from './address-generation-dialog';
 import { generatePolygonAddressing, type AddressPoint, type CrossLine } from '@/lib/address-generator';
 import type { LineString } from 'geojson';
 
-// Component to handle zoom-dependent classes
-const MapZoomListener = ({ onChange }: { onChange: (zoom: number) => void }) => {
+// Component to handle map-wide events
+const MapEventsHandler = ({ 
+  onZoomChange, 
+  onMapClick 
+}: { 
+  onZoomChange: (zoom: number) => void;
+  onMapClick: () => void;
+}) => {
   const map = useMapEvents({
     zoomend: () => {
-      onChange(map.getZoom());
+      onZoomChange(map.getZoom());
     },
+    click: () => {
+      onMapClick();
+    }
   });
   return null;
 };
@@ -61,6 +70,7 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
   const [selectedPolygonForAddressing, setSelectedPolygonForAddressing] = useState<any>(null);
   const [generatedCrossLines, setGeneratedCrossLines] = useState<CrossLine[]>([]);
   const [generatedAddresses, setGeneratedAddresses] = useState<AddressPoint[]>([]);
+  const [districtAddressing, setDistrictAddressing] = useState<any[]>([]);
   const propertyLabelsRef = React.useRef<L.LayerGroup>(L.layerGroup());
   
   const filterState = useMapFilters();
@@ -454,8 +464,15 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
             const data = await response.json();
             setStreetPolygons(data);
           }
+          
+          // Also fetch ALL addressing for this district
+          const addrResponse = await fetch(`/api/street-addressing?districtId=${filterState.selectedDistrict}`);
+          if (addrResponse.ok) {
+            const addrData = await addrResponse.json();
+            setDistrictAddressing(addrData || []);
+          }
         } catch (error) {
-          console.error("Error fetching street polygons:", error);
+          console.error("Error fetching data:", error);
         }
       };
       fetchStreetPolygons();
@@ -490,7 +507,11 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
       renderLayer('streetPolygons', streetPolygons,
         (feature: any) => {
           const isSelected = feature.properties.id === selectedStreetPolygon;
-          return isSelected ? MAP_LEVEL_STYLES.highlight.streetPolygon : MAP_LEVEL_STYLES.streetPolygon;
+          if (isSelected) return MAP_LEVEL_STYLES.highlight.streetPolygon;
+          
+          // Check if it has addressing
+          const hasAddressing = districtAddressing.some(a => a.streetPolygonId === feature.properties.id);
+          return hasAddressing ? MAP_LEVEL_STYLES.addressedStreetPolygon : MAP_LEVEL_STYLES.streetPolygon;
         },
         (feature: any, layer: any) => {
           layer.on({
@@ -505,20 +526,12 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
               });
               
               // Try to load existing addressing
-              try {
-                const response = await fetch(`/api/street-addressing?streetPolygonId=${feature.properties.id}`);
-                if (response.ok) {
-                  const addressing = await response.json();
-                  setGeneratedCrossLines(addressing.crossLines || []);
-                  setGeneratedAddresses(addressing.addressPoints);
-                  console.log('✅ Loaded existing addressing');
-                } else {
-                  // No existing addressing, clear previous data
-                  setGeneratedCrossLines([]);
-                  setGeneratedAddresses([]);
-                }
-              } catch (error) {
-                console.log('No existing addressing found');
+              const existingAddressing = districtAddressing.find(a => a.streetPolygonId === feature.properties.id);
+              if (existingAddressing) {
+                setGeneratedCrossLines(existingAddressing.crossLines || []);
+                setGeneratedAddresses(existingAddressing.addressPoints);
+                console.log('✅ Loaded existing addressing from local state');
+              } else {
                 setGeneratedCrossLines([]);
                 setGeneratedAddresses([]);
               }
@@ -534,7 +547,8 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
             mouseout: (e: any) => {
               const isSelected = feature.properties.id === selectedStreetPolygonRef.current;
               if (!isSelected) {
-                e.target.setStyle(MAP_LEVEL_STYLES.streetPolygon);
+                const hasAddressing = districtAddressing.some(a => a.streetPolygonId === feature.properties.id);
+                e.target.setStyle(hasAddressing ? MAP_LEVEL_STYLES.addressedStreetPolygon : MAP_LEVEL_STYLES.streetPolygon);
               }
             }
           });
@@ -545,10 +559,9 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
         false,
         'streetPolygonsPane'
       );
-    } else {
-      clearLayer('streetPolygons');
     }
-  }, [mapInstance, filterState.selectedDistrict, streetPolygons, selectedStreetPolygon, renderLayer, clearLayer]);
+    // Only re-run when base data or visibility changes
+  }, [mapInstance, filterState.selectedDistrict, streetPolygons, selectedStreetPolygon, districtAddressing, renderLayer, clearLayer]);
 
   // 3c. Render Property Polygons
   useEffect(() => {
@@ -716,6 +729,28 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
       setGeneratedCrossLines(result.crossLines);
       setGeneratedAddresses(result.addressPoints);
       
+      // Update global addressing state
+      setDistrictAddressing(prev => {
+        const index = prev.findIndex(a => a.streetPolygonId === selectedPolygonForAddressing.id);
+        const newEntry = {
+          streetPolygonId: selectedPolygonForAddressing.id,
+          centerline: result.centerline,
+          addressPoints: result.addressPoints,
+          crossLines: result.crossLines,
+          intervalMeters: options.intervalMeters,
+          offsetMeters: options.offsetMeters,
+          startNumber: options.startNumber,
+          totalLength: result.totalLength,
+        };
+        
+        if (index >= 0) {
+          const next = [...prev];
+          next[index] = newEntry;
+          return next;
+        }
+        return [...prev, newEntry];
+      });
+      
       console.log('✅ Addressing generated and saved:', result);
     } catch (error) {
       console.error('Error generating addresses:', error);
@@ -842,13 +877,22 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
           setZoomLevel(map.getZoom());
         }} 
       >
-        <MapZoomListener onChange={setZoomLevel} />
+        <MapEventsHandler 
+          onZoomChange={setZoomLevel} 
+          onMapClick={() => {
+            setSelectedStreetPolygon("");
+            setGeneratedCrossLines([]);
+            setGeneratedAddresses([]);
+            console.log('🧹 Map clicked outside features - clearing selection');
+          }} 
+        />
         
-        {/* Render cross lines every 20m */}
+        {/* Render cross lines for all addressed streets at high zoom levels */}
         <FeatureGroup>
+          {/* 1. Preview/Active selection cross lines */}
           {generatedCrossLines.map((crossLine) => (
             <Polyline
-              key={crossLine.id}
+              key={`preview-${crossLine.id}`}
               positions={[
                 [crossLine.start[1], crossLine.start[0]],
                 [crossLine.end[1], crossLine.end[0]]
@@ -860,10 +904,31 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
               }}
             />
           ))}
+
+          {/* 2. Global cross lines for all saved addressing */}
+          {zoomLevel >= 16 && districtAddressing.map((addrSet) => (
+            <React.Fragment key={`global-cross-set-${addrSet.streetPolygonId}`}>
+              {/* Only show if not currently being edited to avoid duplication */}
+              {selectedPolygonForAddressing?.id !== addrSet.streetPolygonId && addrSet.crossLines?.map((crossLine: any) => (
+                <Polyline
+                  key={`global-${addrSet.streetPolygonId}-${crossLine.id}`}
+                  positions={[
+                    [crossLine.start[1], crossLine.start[0]],
+                    [crossLine.end[1], crossLine.end[0]]
+                  ]}
+                  pathOptions={{
+                    color: '#ffffff',
+                    weight: 1.5,
+                    opacity: 0.6,
+                  }}
+                />
+              ))}
+            </React.Fragment>
+          ))}
         </FeatureGroup>
 
-        {/* Render generated address points */}
-        {generatedAddresses.map((addr) => {
+        {/* Render generated address points (for the selected street being edited) */}
+        {!selectedStreetPolygon && generatedAddresses.map((addr) => {
           const icon = L.divIcon({
             className: 'address-label-marker',
             html: `<div style="
@@ -891,6 +956,41 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
             />
           );
         })}
+
+        {/* Render ALL district address points at high zoom levels */}
+        {zoomLevel >= 17 && districtAddressing.map((addrSet) => (
+          <React.Fragment key={`addr-set-${addrSet.streetPolygonId}`}>
+            {addrSet.addressPoints.map((addr: AddressPoint) => {
+              const icon = L.divIcon({
+                className: 'address-label-marker-global',
+                html: `<div style="
+                  background: white;
+                  border: 1px solid #15803d;
+                  border-radius: 50%;
+                  width: 20px;
+                  height: 20px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  font-size: 10px;
+                  font-weight: bold;
+                  color: #15803d;
+                  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+                ">${addr.number}</div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+              });
+
+              return (
+                <Marker
+                  key={`${addrSet.streetPolygonId}-${addr.id}`}
+                  position={[addr.position[1], addr.position[0]]}
+                  icon={icon}
+                />
+              );
+            })}
+          </React.Fragment>
+        ))}
         
         {showStreetPopup && filterState.selectedStreet && streetPopupPos && streetDetails && (
           <>
@@ -962,6 +1062,8 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
         onOpenChange={setShowAddressDialog}
         polygonData={selectedPolygonForAddressing}
         onGenerate={handleGenerateAddresses}
+        isEditing={!!districtAddressing.find(a => a.streetPolygonId === selectedPolygonForAddressing?.id)}
+        initialData={districtAddressing.find(a => a.streetPolygonId === selectedPolygonForAddressing?.id)}
       />
     </div>
   );

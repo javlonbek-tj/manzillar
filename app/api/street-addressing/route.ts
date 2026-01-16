@@ -1,14 +1,35 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-// GET: Retrieve addressing for a street polygon
+// GET: Retrieve addressing for a street polygon or all addressing for a district
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const streetPolygonId = searchParams.get('streetPolygonId');
+    const districtId = searchParams.get('districtId');
+
+    if (districtId) {
+      // Find all addressing records for street polygons in this district
+      const addressingList = await prisma.streetAddressing.findMany({
+        where: {
+          streetPolygon: {
+            districtId: districtId
+          }
+        },
+        include: {
+          streetPolygon: {
+            select: {
+              id: true,
+              nameUz: true
+            }
+          }
+        }
+      });
+      return NextResponse.json(addressingList);
+    }
 
     if (!streetPolygonId) {
-      return NextResponse.json({ error: "streetPolygonId is required" }, { status: 400 });
+      return NextResponse.json({ error: "streetPolygonId or districtId is required" }, { status: 400 });
     }
 
     const addressing = await prisma.streetAddressing.findUnique({

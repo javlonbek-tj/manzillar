@@ -29,19 +29,42 @@ interface AddressGenerationDialogProps {
     startNumber: number;
     reverseDirection: boolean;
   }) => Promise<void>;
+  isEditing?: boolean;
+  initialData?: {
+    intervalMeters: number;
+    offsetMeters: number;
+    startNumber: number;
+  } | null;
 }
 
 export function AddressGenerationDialog({
   open,
   onOpenChange,
   polygonData,
-  onGenerate
+  onGenerate,
+  isEditing = false,
+  initialData = null
 }: AddressGenerationDialogProps) {
   const [intervalMeters, setIntervalMeters] = useState(20);
   const [offsetMeters, setOffsetMeters] = useState(5);
   const [startNumber, setStartNumber] = useState(1);
   const [reverseDirection, setReverseDirection] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Pre-fill form when initialData changes or dialog opens
+  React.useEffect(() => {
+    if (open && initialData) {
+      setIntervalMeters(initialData.intervalMeters || 20);
+      setOffsetMeters(initialData.offsetMeters || 5);
+      setStartNumber(initialData.startNumber || 1);
+    } else if (open && !isEditing) {
+      // Reset to defaults if not editing
+      setIntervalMeters(20);
+      setOffsetMeters(5);
+      setStartNumber(1);
+      setReverseDirection(false);
+    }
+  }, [open, initialData, isEditing]);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -66,9 +89,9 @@ export function AddressGenerationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Ko'cha raqamlarini yaratish</DialogTitle>
+          <DialogTitle>{isEditing ? 'Ko\'cha raqamlarini tahrirlash' : 'Ko\'cha raqamlarini yaratish'}</DialogTitle>
           <DialogDescription>
-            {polygonData.nameUz} ko'chasi uchun avtomatik raqamlash tizimini yaratish
+            {polygonData.nameUz} ko'chasi uchun {isEditing ? 'mavjud raqamlash tizimini o\'zgartirish' : 'avtomatik raqamlash tizimini yaratish'}
           </DialogDescription>
         </DialogHeader>
         
@@ -164,10 +187,10 @@ export function AddressGenerationDialog({
             {isGenerating ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Yaratilmoqda...
+                {isEditing ? 'Yangilanmoqda...' : 'Yaratilmoqda...'}
               </>
             ) : (
-              'Raqamlashni yaratish'
+              isEditing ? 'Raqamlashni yangilash' : 'Raqamlashni yaratish'
             )}
           </Button>
         </DialogFooter>

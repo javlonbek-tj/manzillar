@@ -31,6 +31,12 @@ export const MAP_LEVEL_STYLES = {
     fillOpacity: 0.8,
     color: 'oklch(45.5% 0.188 13.697)',
   },
+  addressedStreetPolygon: {
+    fillColor: '#22c55e', // Green fill
+    weight: 2,
+    fillOpacity: 0.8,
+    color: '#15803d', // Darker green border
+  },
    property: {
     fillColor: '#6366f1',
     weight: 1,
