@@ -47,10 +47,10 @@ export function HeaderActions() {
           </TooltipContent>
         </Tooltip>
 
-        <Button variant='secondary' className='flex items-center gap-2 cursor-pointer'>
+       {/*  <Button variant='secondary' className='flex items-center gap-2 cursor-pointer'>
           <span>Kirish</span>
           <LogIn className='h-4 w-4' />
-        </Button>
+        </Button> */}
       </div>
     </TooltipProvider>
   );
