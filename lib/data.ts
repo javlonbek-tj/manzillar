@@ -1,10 +1,11 @@
 'use server';
 
+import { cache } from 'react';
 import prisma from './prisma';
 import type { RegionData, DistrictData, MahallaData } from '@/types/map';
 
 // Fetch all regions
-export async function getRegions(): Promise<RegionData[]> {
+export const getRegions = cache(async (): Promise<RegionData[]> => {
   try {
     const regions = await prisma.region.findMany({
       orderBy: { nameUz: 'asc' },
@@ -15,10 +16,10 @@ export async function getRegions(): Promise<RegionData[]> {
     console.error('Failed to fetch regions:', error);
     return [];
   }
-}
+});
 
 // Fetch districts for a specific region
-export async function getDistricts(regionId: string): Promise<DistrictData[]> {
+export const getDistricts = cache(async (regionId: string): Promise<DistrictData[]> => {
   if (!regionId) return [];
   try {
     const districts = await prisma.district.findMany({
@@ -30,10 +31,10 @@ export async function getDistricts(regionId: string): Promise<DistrictData[]> {
     console.error('Failed to fetch districts:', error);
     return [];
   }
-}
+});
 
 // Fetch mahallas for a specific district
-export async function getMahallas(districtId: string): Promise<MahallaData[]> {
+export const getMahallas = cache(async (districtId: string): Promise<MahallaData[]> => {
   if (!districtId) return [];
   try {
     const mahallas = await prisma.mahalla.findMany({
@@ -45,10 +46,10 @@ export async function getMahallas(districtId: string): Promise<MahallaData[]> {
     console.error('Failed to fetch mahallas:', error);
     return [];
   }
-}
+});
 
 // Fetch all regions with their districts (for structure page)
-export async function getAllRegionsWithDistricts() {
+export const getAllRegionsWithDistricts = cache(async () => {
   try {
     const regions = await prisma.region.findMany({
       include: {
@@ -63,10 +64,10 @@ export async function getAllRegionsWithDistricts() {
     console.error('Failed to fetch regions with districts:', error);
     return [];
   }
-}
+});
 
 // Fetch statistics for dashboard
-export async function getStatistics() {
+export const getStatistics = cache(async () => {
   try {
     const [regionCount, districtCount, mahallaCount, propertyCount] = await Promise.all([
       prisma.region.count(),
@@ -90,10 +91,10 @@ export async function getStatistics() {
       properties: 0,
     };
   }
-}
+});
 
 // Fetch all statistics for a specific context
-export async function getGlobalStatistics() {
+export const getGlobalStatistics = cache(async () => {
   try {
     const [regions, districts, mahallas, streets] = await Promise.all([
       prisma.region.count(),
@@ -107,9 +108,9 @@ export async function getGlobalStatistics() {
     console.error('Failed to fetch global statistics:', error);
     return { regions: 0, districts: 0, mahallas: 0, streets: 0 };
   }
-}
+});
 
-export async function getRegionStatistics(regionId: string) {
+export const getRegionStatistics = cache(async (regionId: string) => {
   if (!regionId) return null;
   try {
     const [districts, mahallas, streets] = await Promise.all([
@@ -123,9 +124,9 @@ export async function getRegionStatistics(regionId: string) {
     console.error('Failed to fetch region statistics:', error);
     return { districts: 0, mahallas: 0, streets: 0 };
   }
-}
+});
 
-export async function getDistrictStatistics(districtId: string) {
+export const getDistrictStatistics = cache(async (districtId: string) => {
   if (!districtId) return null;
   try {
     const [mahallas, streets] = await Promise.all([
@@ -138,10 +139,10 @@ export async function getDistrictStatistics(districtId: string) {
     console.error('Failed to fetch district statistics:', error);
     return { mahallas: 0, streets: 0 };
   }
-}
+});
 
 // Fetch initial data for map (regions with basic info)
-export async function getMapInitialData() {
+export const getMapInitialData = cache(async () => {
   try {
     const regions = await prisma.region.findMany({
       select: {
@@ -157,10 +158,10 @@ export async function getMapInitialData() {
     console.error('Failed to fetch map initial data:', error);
     return [];
   }
-}
+});
 
 
-export async function getStreets(mahallaId: string) {
+export const getStreets = cache(async (mahallaId: string) => {
   if (!mahallaId) return [];
   try {
     const mahalla = await prisma.mahalla.findUnique({
@@ -179,9 +180,9 @@ export async function getStreets(mahallaId: string) {
     console.error('Failed to fetch streets:', error);
     return [];
   }
-}
+});
 
-export async function getStreetsByDistrict(districtId: string) {
+export const getStreetsByDistrict = cache(async (districtId: string) => {
   if (!districtId) return [];
   try {
     const streets = await prisma.street.findMany({
@@ -193,9 +194,9 @@ export async function getStreetsByDistrict(districtId: string) {
     console.error('Failed to fetch district streets:', error);
     return [];
   }
-}
+});
 
-export async function getProperties(districtId?: string) {
+export const getProperties = cache(async (districtId?: string) => {
   try {
     const properties = await prisma.property.findMany({
       where: {
@@ -207,9 +208,9 @@ export async function getProperties(districtId?: string) {
     console.error('Failed to fetch real estate:', error);
     return [];
   }
-}
+});
 
-export async function getDashboardAnalytics() {
+export const getDashboardAnalytics = cache(async () => {
   try {
     const [
       totalRegions,
@@ -279,7 +280,9 @@ export async function getDashboardAnalytics() {
     console.error('Failed to fetch dashboard analytics:', error);
     return null;
   }
-}export async function getRegionalAnalytics() {
+});
+
+export const getRegionalAnalytics = cache(async () => {
   try {
     const regions = await prisma.region.findMany({
       select: {
@@ -393,10 +396,10 @@ export async function getDashboardAnalytics() {
     console.error('Failed to fetch regional analytics:', error);
     return [];
   }
-}
+});
 
 
-export async function getDistrictAnalytics(districtId: string) {
+export const getDistrictAnalytics = cache(async (districtId: string) => {
   try {
     const district = await prisma.district.findUnique({
       where: { id: districtId },
@@ -494,4 +497,4 @@ export async function getDistrictAnalytics(districtId: string) {
     console.error('Failed to fetch district analytics:', error);
     return null;
   }
-}
+});
