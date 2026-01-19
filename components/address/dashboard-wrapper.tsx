@@ -19,22 +19,19 @@ export function DashboardWrapper({
   const darkMode = theme === "dark";
 
   return (
-    <div className="flex h-screen w-full overflow-hidden">
-      <AppSidebar />
-      <SidebarInset className="flex flex-col flex-1 overflow-hidden">
-        <header className='flex h-16 shrink-0 items-center justify-between gap-4 border-b px-6 transition-all duration-300'>
-          <h1 className='text-lg font-semibold text-slate-800 dark:text-slate-100'>{title}</h1>
-          <HeaderActions />
-        </header>
-        <main
-          className={cn(
-            "flex-1 overflow-y-auto p-4 sm:p-6 transition-colors",
-            darkMode ? "bg-gray-900" : "bg-blue-50"
-          )}
-        >
-          {children}
-        </main>
-      </SidebarInset>
-    </div>
+    <>
+      <header className='flex h-16 shrink-0 items-center justify-between gap-4 border-b px-6 transition-all duration-300'>
+        <h1 className='text-lg font-semibold text-slate-800 dark:text-slate-100'>{title}</h1>
+        <HeaderActions />
+      </header>
+      <main
+        className={cn(
+          "flex-1 overflow-y-auto p-4 sm:p-6 transition-colors",
+          darkMode ? "bg-gray-900" : "bg-blue-50"
+        )}
+      >
+        {children}
+      </main>
+    </>
   );
 }
