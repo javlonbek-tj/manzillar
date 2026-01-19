@@ -4,7 +4,6 @@ import { DashboardWrapper } from '@/components/address/dashboard-wrapper';
 import { DashboardOverview } from '@/components/dashboard/overview/DashboardOverview';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 
-export const dynamic = 'force-dynamic';
 
 async function DashboardOverviewFetcher() {
   const data = await getDashboardAnalytics();

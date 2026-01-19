@@ -4,7 +4,6 @@ import { RegionalAnalytics } from '@/components/analytics/RegionalAnalytics';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { HeaderActions } from '@/components/header-actions';
 
-export const dynamic = 'force-dynamic';
 
 async function AnalyticsDataFetcher() {
   const data = await getRegionalAnalytics();

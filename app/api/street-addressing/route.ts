@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 // GET: Retrieve addressing for a street polygon or all addressing for a district
 export async function GET(request: Request) {
@@ -96,6 +96,10 @@ export async function POST(request: Request) {
 
     revalidatePath('/street-addressing');
 
+    // Invalidate analytics cache
+    revalidateTag('dashboard-analytics');
+    revalidateTag('regional-analytics');
+
     return NextResponse.json(addressing);
   } catch (error) {
     console.error("API Error saving addressing:", error);
@@ -118,6 +122,10 @@ export async function DELETE(request: Request) {
     });
 
     revalidatePath('/street-addressing');
+
+    // Invalidate analytics cache
+    revalidateTag('dashboard-analytics');
+    revalidateTag('regional-analytics');
 
     return NextResponse.json({ success: true });
   } catch (error) {

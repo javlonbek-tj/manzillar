@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 
 export async function PUT(
   request: Request,
@@ -42,11 +42,15 @@ export async function PUT(
       },
     });
 
-    // Revalidate paths that use this data
+    // Revalidate paths and tags that use this data
     revalidatePath('/dashboard');
     revalidatePath('/address-data');
     revalidatePath('/analytics');
     revalidatePath(`/address-data/mahalla/${id}`);
+    
+    // Invalidate analytics cache
+    revalidateTag('dashboard-analytics');
+    revalidateTag('regional-analytics');
 
     return NextResponse.json(updatedMahalla);
   } catch (error) {
@@ -70,10 +74,14 @@ export async function DELETE(
       where: { id },
     });
 
-    // Revalidate paths that use this data
+    // Revalidate paths and tags that use this data
     revalidatePath('/dashboard');
     revalidatePath('/address-data');
     revalidatePath('/analytics');
+    
+    // Invalidate analytics cache
+    revalidateTag('dashboard-analytics');
+    revalidateTag('regional-analytics');
 
     return NextResponse.json(deletedMahalla);
   } catch (error) {
