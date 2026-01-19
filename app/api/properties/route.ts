@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { getPropertiesByDistrict } from "@/lib/data";
 
 export async function GET(request: Request) {
   try {
@@ -11,28 +11,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "districtId is required" }, { status: 400 });
     }
 
-    const where: any = { districtId };
-    if (mahalla) {
-      where.mahalla = mahalla;
-    }
-
-    const properties = await prisma.property.findMany({
-      where,
-      select: {
-        id: true,
-        owner: true,
-        address: true,
-        houseNumber: true,
-        geometry: true,
-        center: true,
-        type: true,
-        cadastralNumber: true,
-        areaInDoc: true,
-        areaReal: true,
-        mahalla: true,
-        streetName: true,
-      },
-    });
+    const properties = await getPropertiesByDistrict(districtId, mahalla || undefined);
 
     return NextResponse.json(properties);
   } catch (error) {

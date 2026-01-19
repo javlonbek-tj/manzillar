@@ -30,6 +30,8 @@ export async function PUT(
     // Invalidate analytics cache
     revalidateTag('dashboard-analytics');
     revalidateTag('regional-analytics');
+    revalidateTag('street-polygons');
+    revalidateTag('properties');
 
     return NextResponse.json(updatedStreet);
   } catch (error) {
@@ -60,6 +62,8 @@ export async function DELETE(
     // Invalidate analytics cache
     revalidateTag('dashboard-analytics');
     revalidateTag('regional-analytics');
+    revalidateTag('street-polygons');
+    revalidateTag('properties');
 
     return NextResponse.json(deletedStreet);
   } catch (error) {

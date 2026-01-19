@@ -30,6 +30,8 @@ export async function PUT(
     // Invalidate analytics cache
     revalidateTag('dashboard-analytics');
     revalidateTag('regional-analytics');
+    revalidateTag('regions');
+    revalidateTag('map-initial-data');
 
     return NextResponse.json(updatedRegion);
   } catch (error) {
@@ -61,6 +63,8 @@ export async function DELETE(
     // Invalidate analytics cache
     revalidateTag('dashboard-analytics');
     revalidateTag('regional-analytics');
+    revalidateTag('regions');
+    revalidateTag('map-initial-data');
 
     return NextResponse.json(deletedRegion);
   } catch (error) {

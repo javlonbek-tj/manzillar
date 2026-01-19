@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { getStreetAddressing, getDistrictAddressing } from "@/lib/data";
 import { revalidatePath, revalidateTag } from "next/cache";
+import prisma from "@/lib/prisma";
 
 // GET: Retrieve addressing for a street polygon or all addressing for a district
 export async function GET(request: Request) {
@@ -10,22 +11,7 @@ export async function GET(request: Request) {
     const districtId = searchParams.get('districtId');
 
     if (districtId) {
-      // Find all addressing records for street polygons in this district
-      const addressingList = await prisma.streetAddressing.findMany({
-        where: {
-          streetPolygon: {
-            districtId: districtId
-          }
-        },
-        include: {
-          streetPolygon: {
-            select: {
-              id: true,
-              nameUz: true
-            }
-          }
-        }
-      });
+      const addressingList = await getDistrictAddressing(districtId);
       return NextResponse.json(addressingList);
     }
 
@@ -33,9 +19,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "streetPolygonId or districtId is required" }, { status: 400 });
     }
 
-    const addressing = await prisma.streetAddressing.findUnique({
-      where: { streetPolygonId },
-    });
+    const addressing = await getStreetAddressing(streetPolygonId);
 
     if (!addressing) {
       return NextResponse.json({ error: "Addressing not found" }, { status: 404 });
@@ -96,9 +80,10 @@ export async function POST(request: Request) {
 
     revalidatePath('/street-addressing');
 
-    // Invalidate analytics cache
+    // Invalidate analytics and addressing cache
     revalidateTag('dashboard-analytics');
     revalidateTag('regional-analytics');
+    revalidateTag('street-addressing');
 
     return NextResponse.json(addressing);
   } catch (error) {
@@ -123,9 +108,10 @@ export async function DELETE(request: Request) {
 
     revalidatePath('/street-addressing');
 
-    // Invalidate analytics cache
+    // Invalidate analytics and addressing cache
     revalidateTag('dashboard-analytics');
     revalidateTag('regional-analytics');
+    revalidateTag('street-addressing');
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { getStreetPolygons } from "@/lib/data";
 
 export async function GET(request: Request) {
   try {
@@ -10,20 +10,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "districtId is required" }, { status: 400 });
     }
 
-    const streetPolygons = await prisma.streetPolygone.findMany({
-      where: { districtId },
-      select: {
-        id: true,
-        nameUz: true,
-        code: true,
-        type: true,
-        geometry: true,
-        mahallaId: true,
-      },
-    });
-
-    // Force proper JSON serialization - Prisma's JsonValue needs to be converted to plain objects
-    const serializedPolygons = JSON.parse(JSON.stringify(streetPolygons));
+    const serializedPolygons = await getStreetPolygons(districtId);
 
     return NextResponse.json(serializedPolygons);
   } catch (error) {

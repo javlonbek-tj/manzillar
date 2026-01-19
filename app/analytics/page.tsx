@@ -3,7 +3,7 @@ import { getRegionalAnalytics } from '@/lib/data';
 import { RegionalAnalytics } from '@/components/analytics/RegionalAnalytics';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { HeaderActions } from '@/components/header-actions';
-
+import { revalidateTag } from 'next/cache';
 
 async function AnalyticsDataFetcher() {
   const data = await getRegionalAnalytics();
@@ -19,7 +19,17 @@ async function AnalyticsDataFetcher() {
   return <RegionalAnalytics data={data} />;
 }
 
-export default function AnalyticsPage() {
+export default async function AnalyticsPage({
+  searchParams
+}: {
+  searchParams: Promise<{ refresh?: string }>
+}) {
+  const params = await searchParams;
+
+  if (params.refresh === 'true') {
+    revalidateTag('regional-analytics');
+  }
+
   return (
     <>
       <header className='flex h-16 shrink-0 items-center justify-between gap-4 border-b px-6'>

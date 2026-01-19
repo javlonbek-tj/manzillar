@@ -1,4 +1,3 @@
-export const dynamic = 'force-dynamic';
 import { Suspense } from 'react';
 import MapWrapper from '@/components/map/map-wrapper';
 import { HeaderActions } from '@/components/header-actions';
