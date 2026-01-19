@@ -1,33 +1,24 @@
 'use server';
 
-import { cache } from 'react';
-import { unstable_cache } from 'next/cache';
 import prisma from './prisma';
 import type { RegionData, DistrictData, MahallaData } from '@/types/map';
 
 // Fetch all regions
-export const getRegions = unstable_cache(
-  async (): Promise<RegionData[]> => {
-    try {
-      const regions = await prisma.region.findMany({
-        orderBy: { nameUz: 'asc' },
-      });
-      // Prisma returns generic JSON types, we cast them to our specific interfaces
-      return regions as unknown as RegionData[];
-    } catch (error) {
-      console.error('Failed to fetch regions:', error);
-      return [];
-    }
-  },
-  ['regions'],
-  {
-    tags: ['regions'],
-    revalidate: 3600
+export async function getRegions(): Promise<RegionData[]> {
+  try {
+    const regions = await prisma.region.findMany({
+      orderBy: { nameUz: 'asc' },
+    });
+    // Prisma returns generic JSON types, we cast them to our specific interfaces
+    return regions as unknown as RegionData[];
+  } catch (error) {
+    console.error('Failed to fetch regions:', error);
+    return [];
   }
-);
+}
 
 // Fetch districts for a specific region
-export const getDistricts = cache(async (regionId: string): Promise<DistrictData[]> => {
+export async function getDistricts(regionId: string): Promise<DistrictData[]> {
   if (!regionId) return [];
   try {
     const districts = await prisma.district.findMany({
@@ -39,10 +30,10 @@ export const getDistricts = cache(async (regionId: string): Promise<DistrictData
     console.error('Failed to fetch districts:', error);
     return [];
   }
-});
+}
 
 // Fetch mahallas for a specific district
-export const getMahallas = cache(async (districtId: string): Promise<MahallaData[]> => {
+export async function getMahallas(districtId: string): Promise<MahallaData[]> {
   if (!districtId) return [];
   try {
     const mahallas = await prisma.mahalla.findMany({
@@ -54,10 +45,10 @@ export const getMahallas = cache(async (districtId: string): Promise<MahallaData
     console.error('Failed to fetch mahallas:', error);
     return [];
   }
-});
+}
 
 // Fetch all regions with their districts (for structure page)
-export const getAllRegionsWithDistricts = cache(async () => {
+export async function getAllRegionsWithDistricts() {
   try {
     const regions = await prisma.region.findMany({
       include: {
@@ -72,10 +63,10 @@ export const getAllRegionsWithDistricts = cache(async () => {
     console.error('Failed to fetch regions with districts:', error);
     return [];
   }
-});
+}
 
 // Fetch statistics for dashboard
-export const getStatistics = cache(async () => {
+export async function getStatistics() {
   try {
     const [regionCount, districtCount, mahallaCount, propertyCount] = await Promise.all([
       prisma.region.count(),
@@ -99,105 +90,77 @@ export const getStatistics = cache(async () => {
       properties: 0,
     };
   }
-});
+}
 
 // Fetch all statistics for a specific context
-export const getGlobalStatistics = unstable_cache(
-  async () => {
-    try {
-      const [regions, districts, mahallas, streets] = await Promise.all([
-        prisma.region.count(),
-        prisma.district.count(),
-        prisma.mahalla.count(),
-        prisma.street.count(),
-      ]);
+export async function getGlobalStatistics() {
+  try {
+    const [regions, districts, mahallas, streets] = await Promise.all([
+      prisma.region.count(),
+      prisma.district.count(),
+      prisma.mahalla.count(),
+      prisma.street.count(),
+    ]);
 
-      return { regions, districts, mahallas, streets };
-    } catch (error) {
-      console.error('Failed to fetch global statistics:', error);
-      return { regions: 0, districts: 0, mahallas: 0, streets: 0 };
-    }
-  },
-  ['global-statistics'],
-  {
-    tags: ['dashboard-analytics'], // Re-use dashboard tag as it's the same aggregation level
-    revalidate: 3600
+    return { regions, districts, mahallas, streets };
+  } catch (error) {
+    console.error('Failed to fetch global statistics:', error);
+    return { regions: 0, districts: 0, mahallas: 0, streets: 0 };
   }
-);
+}
 
-export const getRegionStatistics = unstable_cache(
-  async (regionId: string) => {
-    if (!regionId) return null;
-    try {
-      const [districts, mahallas, streets] = await Promise.all([
-        prisma.district.count({ where: { regionId } }),
-        prisma.mahalla.count({ where: { district: { regionId } } }),
-        prisma.street.count({ where: { district: { regionId } } }),
-      ]);
+export async function getRegionStatistics(regionId: string) {
+  if (!regionId) return null;
+  try {
+    const [districts, mahallas, streets] = await Promise.all([
+      prisma.district.count({ where: { regionId } }),
+      prisma.mahalla.count({ where: { district: { regionId } } }),
+      prisma.street.count({ where: { district: { regionId } } }),
+    ]);
 
-      return { districts, mahallas, streets };
-    } catch (error) {
-      console.error('Failed to fetch region statistics:', error);
-      return { districts: 0, mahallas: 0, streets: 0 };
-    }
-  },
-  ['region-statistics'],
-  {
-    tags: ['regional-analytics'], // Re-use regional tag
-    revalidate: 3600
+    return { districts, mahallas, streets };
+  } catch (error) {
+    console.error('Failed to fetch region statistics:', error);
+    return { districts: 0, mahallas: 0, streets: 0 };
   }
-);
+}
 
-export const getDistrictStatistics = unstable_cache(
-  async (districtId: string) => {
-    if (!districtId) return null;
-    try {
-      const [mahallas, streets] = await Promise.all([
-        prisma.mahalla.count({ where: { districtId } }),
-        prisma.street.count({ where: { districtId } }),
-      ]);
+export async function getDistrictStatistics(districtId: string) {
+  if (!districtId) return null;
+  try {
+    const [mahallas, streets] = await Promise.all([
+      prisma.mahalla.count({ where: { districtId } }),
+      prisma.street.count({ where: { districtId } }),
+    ]);
 
-      return { mahallas, streets };
-    } catch (error) {
-      console.error('Failed to fetch district statistics:', error);
-      return { mahallas: 0, streets: 0 };
-    }
-  },
-  ['district-statistics'],
-  {
-    tags: ['regional-analytics'],
-    revalidate: 3600
+    return { mahallas, streets };
+  } catch (error) {
+    console.error('Failed to fetch district statistics:', error);
+    return { mahallas: 0, streets: 0 };
   }
-);
+}
 
 // Fetch initial data for map (regions with basic info)
-export const getMapInitialData = unstable_cache(
-  async () => {
-    try {
-      const regions = await prisma.region.findMany({
-        select: {
-          id: true,
-          nameUz: true,
-          nameRu: true,
-          geometry: true,
-        },
-        orderBy: { nameUz: 'asc' },
-      });
-      return regions;
-    } catch (error) {
-      console.error('Failed to fetch map initial data:', error);
-      return [];
-    }
-  },
-  ['map-initial-data'],
-  {
-    tags: ['map-initial-data'],
-    revalidate: 3600
+export async function getMapInitialData() {
+  try {
+    const regions = await prisma.region.findMany({
+      select: {
+        id: true,
+        nameUz: true,
+        nameRu: true,
+        geometry: true,
+      },
+      orderBy: { nameUz: 'asc' },
+    });
+    return regions;
+  } catch (error) {
+    console.error('Failed to fetch map initial data:', error);
+    return [];
   }
-);
+}
 
 
-export const getStreets = cache(async (mahallaId: string) => {
+export async function getStreets(mahallaId: string) {
   if (!mahallaId) return [];
   try {
     const mahalla = await prisma.mahalla.findUnique({
@@ -216,9 +179,9 @@ export const getStreets = cache(async (mahallaId: string) => {
     console.error('Failed to fetch streets:', error);
     return [];
   }
-});
+}
 
-export const getStreetsByDistrict = cache(async (districtId: string) => {
+export async function getStreetsByDistrict(districtId: string) {
   if (!districtId) return [];
   try {
     const streets = await prisma.street.findMany({
@@ -230,9 +193,9 @@ export const getStreetsByDistrict = cache(async (districtId: string) => {
     console.error('Failed to fetch district streets:', error);
     return [];
   }
-});
+}
 
-export const getProperties = cache(async (districtId?: string) => {
+export async function getProperties(districtId?: string) {
   try {
     const properties = await prisma.property.findMany({
       where: {
@@ -244,213 +207,196 @@ export const getProperties = cache(async (districtId?: string) => {
     console.error('Failed to fetch real estate:', error);
     return [];
   }
-});
+}
 
-// Fetch statistics for dashboard with persistent caching
-export const getDashboardAnalytics = unstable_cache(
-  async () => {
-    try {
-      const [
-        totalRegions,
-        totalDistricts,
-        totalMahallas,
-        totalStreets,
-        totalProperties,
-        streetsByType,
-        hiddenMahallas
-      ] = await Promise.all([
-        prisma.region.count(),
-        prisma.district.count(),
-        prisma.mahalla.count(),
-        prisma.street.count(),
-        prisma.property.count(),
-        prisma.street.groupBy({
-          by: ['type'],
-          _count: {
-            id: true
-          }
-        }),
-        prisma.mahalla.count({
-          where: {
-            hidden: true
-          }
-        })
-      ]);
+export async function getDashboardAnalytics() {
+  try {
+    const [
+      totalRegions,
+      totalDistricts,
+      totalMahallas,
+      totalStreets,
+      totalProperties,
+      streetsByType,
+      hiddenMahallas
+    ] = await Promise.all([
+      prisma.region.count(),
+      prisma.district.count(),
+      prisma.mahalla.count(),
+      prisma.street.count(),
+      prisma.property.count(),
+      prisma.street.groupBy({
+        by: ['type'],
+        _count: {
+          id: true
+        }
+      }),
+      prisma.mahalla.count({
+        where: {
+          hidden: true
+        }
+      })
+    ]);
 
-      // Graph data: Mahallas per region
-      const regionsWithCounts = await prisma.region.findMany({
-        include: {
-          districts: {
-            include: {
-              _count: {
-                select: { mahallas: true }
-              }
+    // Graph data: Mahallas per region
+    const regionsWithCounts = await prisma.region.findMany({
+      include: {
+        districts: {
+          include: {
+            _count: {
+              select: { mahallas: true }
             }
-          }
-        },
-        orderBy: { nameUz: 'asc' }
-      });
-
-      const regionStats = regionsWithCounts.map(r => ({
-        name: r.nameUz,
-        mahallas: r.districts.reduce((acc, d) => acc + d._count.mahallas, 0),
-        districts: r.districts.length
-      }));
-
-      return {
-        counts: {
-          regions: totalRegions,
-          districts: totalDistricts,
-          mahallas: totalMahallas,
-          streets: totalStreets,
-          properties: totalProperties,
-        },
-        charts: {
-          regions: regionStats,
-          streetTypes: streetsByType.map(s => ({ name: s.type || 'Aniqlanmagan', value: s._count.id })),
-          dataHealth: {
-            hiddenMahallas,
-            totalMahallas
           }
         }
-      };
-    } catch (error) {
-      console.error('Failed to fetch dashboard analytics:', error);
-      return null;
-    }
-  },
-  ['dashboard-analytics'],
-  {
-    tags: ['dashboard-analytics'],
-    revalidate: 3600 // 1 hour fallback
+      },
+      orderBy: { nameUz: 'asc' }
+    });
+
+    const regionStats = regionsWithCounts.map(r => ({
+      name: r.nameUz,
+      mahallas: r.districts.reduce((acc, d) => acc + d._count.mahallas, 0),
+      districts: r.districts.length
+    }));
+
+    return {
+      counts: {
+        regions: totalRegions,
+        districts: totalDistricts,
+        mahallas: totalMahallas,
+        streets: totalStreets,
+        properties: totalProperties,
+      },
+      charts: {
+        regions: regionStats,
+        streetTypes: streetsByType.map(s => ({ name: s.type || 'Aniqlanmagan', value: s._count.id })),
+        dataHealth: {
+          hiddenMahallas,
+          totalMahallas
+        }
+      }
+    };
+  } catch (error) {
+    console.error('Failed to fetch dashboard analytics:', error);
+    return null;
   }
-);
+}export async function getRegionalAnalytics() {
+  try {
+    const regions = await prisma.region.findMany({
+      select: {
+        id: true,
+        nameUz: true,
+        nameRu: true,
+        code: true,
+      },
+      orderBy: { nameUz: 'asc' }
+    });
 
-export const getRegionalAnalytics = unstable_cache(
-  async () => {
-    try {
-      const regions = await prisma.region.findMany({
-        select: {
-          id: true,
-          nameUz: true,
-          nameRu: true,
-          code: true,
-        },
-        orderBy: { nameUz: 'asc' }
-      });
+    const analytics = await Promise.all(
+      regions.map(async (region) => {
+        // Fetch districts for this region
+        const districts = await prisma.district.findMany({
+          where: { regionId: region.id },
+          select: {
+            id: true,
+            nameUz: true,
+            code: true,
+          },
+          orderBy: { nameUz: 'asc' }
+        });
 
-      const analytics = await Promise.all(
-        regions.map(async (region) => {
-          // Fetch districts for this region
-          const districts = await prisma.district.findMany({
-            where: { regionId: region.id },
-            select: {
-              id: true,
-              nameUz: true,
-              code: true,
+        const [
+          totalDistricts,
+          totalMahallas,
+          activeMahallas,
+          hiddenMahallas,
+          mergedMahallas,
+          totalStreets,
+          streetsByType,
+          totalProperties,
+          propertiesByType
+        ] = await Promise.all([
+          prisma.district.count({ where: { regionId: region.id } }),
+          prisma.mahalla.count({ where: { district: { regionId: region.id } } }),
+          prisma.mahalla.count({ 
+            where: { 
+              district: { regionId: region.id },
+              hidden: false
+            } 
+          }),
+          prisma.mahalla.count({ 
+            where: { 
+              district: { regionId: region.id },
+              hidden: true 
+            } 
+          }),
+          prisma.mahalla.count({ 
+            where: { 
+              district: { regionId: region.id },
+              mergedIntoId: { not: null }
+            } 
+          }),
+          prisma.street.count({ where: { district: { regionId: region.id } } }),
+          prisma.street.groupBy({
+            by: ['type'],
+            where: { district: { regionId: region.id } },
+            _count: { id: true }
+          }),
+          prisma.property.count({ where: { district: { regionId: region.id } } }),
+          prisma.property.groupBy({
+            by: ['type'],
+            where: { district: { regionId: region.id } },
+            _count: { id: true }
+          })
+        ]);
+
+        return {
+          region: {
+            id: region.id,
+            nameUz: region.nameUz,
+            nameRu: region.nameRu,
+            code: region.code
+          },
+          districts: districts.map(d => ({
+            id: d.id,
+            nameUz: d.nameUz,
+            code: d.code
+          })),
+          stats: {
+            districts: totalDistricts,
+            mahallas: {
+              total: totalMahallas,
+              active: activeMahallas,
+              hidden: hiddenMahallas,
+              merged: mergedMahallas
             },
-            orderBy: { nameUz: 'asc' }
-          });
-
-          const [
-            totalDistricts,
-            totalMahallas,
-            activeMahallas,
-            hiddenMahallas,
-            mergedMahallas,
-            totalStreets,
-            streetsByType,
-            totalProperties,
-            propertiesByType
-          ] = await Promise.all([
-            prisma.district.count({ where: { regionId: region.id } }),
-            prisma.mahalla.count({ where: { district: { regionId: region.id } } }),
-            prisma.mahalla.count({
-              where: {
-                district: { regionId: region.id },
-                hidden: false
-              }
-            }),
-            prisma.mahalla.count({
-              where: {
-                district: { regionId: region.id },
-                hidden: true
-              }
-            }),
-            prisma.mahalla.count({
-              where: {
-                district: { regionId: region.id },
-                mergedIntoId: { not: null }
-              }
-            }),
-            prisma.street.count({ where: { district: { regionId: region.id } } }),
-            prisma.street.groupBy({
-              by: ['type'],
-              where: { district: { regionId: region.id } },
-              _count: { id: true }
-            }),
-            prisma.property.count({ where: { district: { regionId: region.id } } }),
-            prisma.property.groupBy({
-              by: ['type'],
-              where: { district: { regionId: region.id } },
-              _count: { id: true }
-            })
-          ]);
-
-          return {
-            region: {
-              id: region.id,
-              nameUz: region.nameUz,
-              nameRu: region.nameRu,
-              code: region.code
+            streets: {
+              total: totalStreets,
+              byType: streetsByType.map(s => ({
+                type: s.type || 'Aniqlanmagan',
+                count: s._count.id
+              }))
             },
-            districts: districts.map(d => ({
-              id: d.id,
-              nameUz: d.nameUz,
-              code: d.code
-            })),
-            stats: {
-              districts: totalDistricts,
-              mahallas: {
-                total: totalMahallas,
-                active: activeMahallas,
-                hidden: hiddenMahallas,
-                merged: mergedMahallas
-              },
-              streets: {
-                total: totalStreets,
-                byType: streetsByType.map(s => ({
-                  type: s.type || 'Aniqlanmagan',
-                  count: s._count.id
-                }))
-              },
-              properties: {
-                total: totalProperties,
-                byType: propertiesByType.map(p => ({
-                  type: p.type || 'Aniqlanmagan',
-                  count: p._count.id
-                }))
-              }
+            properties: {
+              total: totalProperties,
+              byType: propertiesByType.map(p => ({
+                type: p.type || 'Aniqlanmagan',
+                count: p._count.id
+              }))
             }
-          };
-        })
-      );
+          }
+        };
+      })
+    );
 
-      return analytics;
-    } catch (error) {
-      console.error('Failed to fetch regional analytics:', error);
-      return [];
-    }
-  },
-  ['regional-analytics'],
-  {
-    tags: ['regional-analytics'],
-    revalidate: 3600 // 1 hour fallback
+    return analytics;
+  } catch (error) {
+    console.error('Failed to fetch regional analytics:', error);
+    return [];
   }
-);
+}
 
 
-export const getDistrictAnalytics = cache(async (districtId: string) => {
+export async function getDistrictAnalytics(districtId: string) {
   try {
     const district = await prisma.district.findUnique({
       where: { id: districtId },
@@ -548,125 +494,4 @@ export const getDistrictAnalytics = cache(async (districtId: string) => {
     console.error('Failed to fetch district analytics:', error);
     return null;
   }
-});
-
-export const getStreetPolygons = unstable_cache(
-  async (districtId: string) => {
-    if (!districtId) return [];
-    try {
-      const streetPolygons = await prisma.streetPolygone.findMany({
-        where: { districtId },
-        select: {
-          id: true,
-          nameUz: true,
-          code: true,
-          type: true,
-          geometry: true,
-          mahallaId: true,
-        },
-      });
-
-      // Force proper JSON serialization - Prisma's JsonValue needs to be converted to plain objects
-      return JSON.parse(JSON.stringify(streetPolygons));
-    } catch (error) {
-      console.error("Failed to fetch street polygons:", error);
-      return [];
-    }
-  },
-  ['street-polygons'],
-  {
-    tags: ['street-polygons'],
-    revalidate: 3600
-  }
-);
-
-export const getPropertiesByDistrict = unstable_cache(
-  async (districtId: string, mahallaName?: string) => {
-    if (!districtId) return [];
-    try {
-      const where: any = { districtId };
-      if (mahallaName) {
-        where.mahalla = mahallaName;
-      }
-
-      const properties = await prisma.property.findMany({
-        where,
-        select: {
-          id: true,
-          owner: true,
-          address: true,
-          houseNumber: true,
-          geometry: true,
-          center: true,
-          type: true,
-          cadastralNumber: true,
-          areaInDoc: true,
-          areaReal: true,
-          mahalla: true,
-          streetName: true,
-        },
-      });
-      return properties;
-    } catch (error) {
-      console.error("Failed to fetch properties:", error);
-      return [];
-    }
-  },
-  ['properties-district'],
-  {
-    tags: ['properties'],
-    revalidate: 3600
-  }
-);
-
-export const getDistrictAddressing = unstable_cache(
-  async (districtId: string) => {
-    if (!districtId) return [];
-    try {
-      const addressingList = await prisma.streetAddressing.findMany({
-        where: {
-          streetPolygon: {
-            districtId: districtId
-          }
-        },
-        include: {
-          streetPolygon: {
-            select: {
-              id: true,
-              nameUz: true
-            }
-          }
-        }
-      });
-      return addressingList;
-    } catch (error) {
-      console.error("Failed to fetch district addressing:", error);
-      return [];
-    }
-  },
-  ['district-addressing'],
-  {
-    tags: ['street-addressing'],
-    revalidate: 3600
-  }
-);
-
-export const getStreetAddressing = unstable_cache(
-  async (streetPolygonId: string) => {
-    if (!streetPolygonId) return null;
-    try {
-      const addressing = await prisma.streetAddressing.findUnique({
-        where: { streetPolygonId },
-      });
-      return addressing;
-    } catch (error) {
-      console.error("Failed to fetch street addressing:", error);
-      return null;
-    }
-  },
-  ['street-addressing-unique'],
-  {
-    tags: ['street-addressing'],
-    revalidate: 3600
-  }
-);
+}

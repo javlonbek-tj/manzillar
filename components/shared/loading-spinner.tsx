@@ -25,7 +25,7 @@ export function LoadingSpinner({
 }: LoadingSpinnerProps) {
   const content = (
     <div className={cn(
-      "flex flex-col items-center justify-center gap-4 animate-in fade-in duration-200",
+      "flex flex-col items-center justify-center gap-4 animate-in fade-in duration-500",
       className
     )}>
       <div className="relative">
