@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { ArrowLeft, Map, CheckCircle2, FileDown } from 'lucide-react';
@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { DetailMapWrapper } from '@/components/map/detail-map-wrapper';
 import { DashboardWrapper } from '@/components/address/dashboard-wrapper';
 import { DownloadMahallaPdf } from '@/components/address/download-mahalla-pdf';
+import { MapLoadingSkeleton } from '@/components/map/map-loading-skeleton';
 
 export default async function MahallaDetailPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -35,7 +36,7 @@ export default async function MahallaDetailPage(props: { params: Promise<{ id: s
                <ArrowLeft className="w-4 h-4" />
              </Button>
           </Link>
-          <h1 className="text-2xl font-bold">{mahalla.nameUz} - Mahalla ma'lumotlari</h1>
+          <h1 className="text-2xl font-bold">{mahalla.nameUz}</h1>
         </div>
         <DownloadMahallaPdf mahalla={mahalla as any} />
       </div>
@@ -119,19 +120,21 @@ export default async function MahallaDetailPage(props: { params: Promise<{ id: s
           </CardContent>
         </Card>
 
-        <Card className="flex flex-col min-h-[500px]">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Map className="w-5 h-5" />
-              Geometriya va Joylashuv
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 p-0 relative overflow-hidden rounded-b-lg">
-             <div className="absolute inset-0">
-               <DetailMapWrapper geometry={mahalla.geometry} />
-             </div>
-          </CardContent>
-        </Card>
+        <Suspense fallback={<MapLoadingSkeleton />}>
+          <Card className="flex flex-col min-h-[500px]">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Map className="w-5 h-5" />
+                Geometriya va Joylashuv
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 p-0 relative overflow-hidden rounded-b-lg">
+               <div className="absolute inset-0">
+                 <DetailMapWrapper geometry={mahalla.geometry} />
+               </div>
+            </CardContent>
+          </Card>
+        </Suspense>
       </div>
       </div>
     </DashboardWrapper>

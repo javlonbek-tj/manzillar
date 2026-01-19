@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { ArrowLeft, Map } from 'lucide-react';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DetailMapWrapper } from '@/components/map/detail-map-wrapper';
 import { DashboardWrapper } from '@/components/address/dashboard-wrapper';
+import { MapLoadingSkeleton } from '@/components/map/map-loading-skeleton';
 
 export default async function RegionDetailPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -29,7 +30,7 @@ export default async function RegionDetailPage(props: { params: Promise<{ id: st
              <ArrowLeft className="w-4 h-4" />
            </Button>
         </Link>
-        <h1 className="text-2xl font-bold">{region.nameUz} - Viloyat ma'lumotlari</h1>
+        <h1 className="text-2xl font-bold">{region.nameUz}</h1>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
@@ -58,19 +59,21 @@ export default async function RegionDetailPage(props: { params: Promise<{ id: st
           </CardContent>
         </Card>
 
-        <Card className="flex flex-col min-h-[500px]">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Map className="w-5 h-5" />
-              Geometriya va Joylashuv
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 p-0 relative overflow-hidden rounded-b-lg">
-             <div className="absolute inset-0">
-               <DetailMapWrapper geometry={region.geometry} />
-             </div>
-          </CardContent>
-        </Card>
+        <Suspense fallback={<MapLoadingSkeleton />}>
+          <Card className="flex flex-col min-h-[500px]">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Map className="w-5 h-5" />
+                Geometriya va Joylashuv
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 p-0 relative overflow-hidden rounded-b-lg">
+               <div className="absolute inset-0">
+                 <DetailMapWrapper geometry={region.geometry} />
+               </div>
+            </CardContent>
+          </Card>
+        </Suspense>
       </div>
     </div>
     </DashboardWrapper>
