@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { Map, LayoutDashboard, MapPin, BarChart3 } from 'lucide-react';
+import { Map, LayoutDashboard, MapPin, BarChart3, LogOut } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Sidebar,
   SidebarContent,
@@ -13,7 +13,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarFooter,
 } from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
 
 const menuItems = [
   {
@@ -40,6 +42,22 @@ const menuItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      router.push('/login');
+      router.refresh();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
   return (
     <Sidebar collapsible='none'>
       <SidebarHeader className='h-16 border-b flex items-center px-6'>
@@ -74,6 +92,17 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="border-t p-4">
+        <Button
+          variant="outline"
+          className="w-full justify-start gap-3"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+        >
+          <LogOut className="w-5 h-5" />
+          <span className="font-medium">{isLoggingOut ? 'Chiqilmoqda...' : 'Chiqish'}</span>
+        </Button>
+      </SidebarFooter>
     </Sidebar>
   );
 }
