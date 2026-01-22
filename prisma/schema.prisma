@@ -90,6 +90,7 @@ model Street {
   nameUz   String
   nameRu   String?
   code     String  @unique
+  uzKadCode String?
   geometry Json
   center   Json?
 

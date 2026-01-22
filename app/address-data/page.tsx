@@ -53,6 +53,7 @@ async function getDashboardData() {
         nameUz: true,
         nameRu: true,
         code: true,
+        uzKadCode: true,
         districtId: true,
         mahallaId: true,
         type: true,

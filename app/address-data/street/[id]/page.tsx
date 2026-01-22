@@ -69,6 +69,10 @@ export default async function StreetDetailPage(props: { params: Promise<{ id: st
                <span className="col-span-2">{street.code}</span>
              </div>
              <div className="grid grid-cols-3 gap-2 border-b pb-2">
+               <span className="font-medium text-muted-foreground col-span-1">UzKad kodi:</span>
+               <span className="col-span-2">{street.uzKadCode || '—'}</span>
+             </div>
+             <div className="grid grid-cols-3 gap-2 border-b pb-2">
                <span className="font-medium text-muted-foreground col-span-1">Turi:</span>
                <span className="col-span-2">{street.type}</span>
              </div>

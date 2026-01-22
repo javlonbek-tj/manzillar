@@ -59,6 +59,7 @@ export function useDashboardExport() {
             Mahalla: item.mahalla.nameUz,
             'Koʻcha nomi': item.nameUz,
             'Koʻcha kodi (SOATO)': item.code,
+            'UzKad kodi': item.uzKadCode || '—',
           }));
           filename = 'Kochalar';
           break;

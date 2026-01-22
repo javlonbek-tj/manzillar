@@ -144,7 +144,7 @@ export function DashboardTable({
                   Mahalla bog'lanishi
                 </th>
                 <th className="px-6 py-4 text-left text-[10px] font-bold text-gray-800 dark:text-gray-300 uppercase tracking-widest leading-none">
-                  Avvalgi nomi
+                  UzKad kodi
                 </th>
               </>
             ) : (
@@ -277,8 +277,12 @@ export function DashboardTable({
                       <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                         {(item as Street)?.mahalla?.nameUz || "—"}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 italic">
-                        {(item as Street).oldName || "—"}
+                      <td className="px-6 py-4 text-sm">
+                        {(item as Street).uzKadCode ? (
+                          <CopyableCode code={(item as Street).uzKadCode!} />
+                        ) : (
+                          <span className="text-gray-500 italic">—</span>
+                        )}
                       </td>
                     </>
                   ) : (

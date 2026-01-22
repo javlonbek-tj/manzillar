@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Hardcoded credentials
-const VALID_USERNAME = 'manzillar';
-const VALID_PASSWORD = 'manzillarabc123';
+const VALID_USERNAME = 'manzil';
+const VALID_PASSWORD = 'manzilabc123';
 
 export async function POST(request: NextRequest) {
   try {
