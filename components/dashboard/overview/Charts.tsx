@@ -64,6 +64,8 @@ export function RegionDistributionChart({ data }: RegionChartProps) {
               }}
               labelStyle={{ color: 'var(--foreground)' }}
               itemStyle={{ color: 'var(--foreground)' }}
+              labelFormatter={(label) => `${label.replace(' viloyati', '')} mahallalar`}
+              formatter={(value) => [`${value}`, 'mahallalar']}
             />
             <Bar
               dataKey="mahallas"
