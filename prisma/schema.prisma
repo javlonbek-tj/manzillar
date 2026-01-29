@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client"
   output   = "../lib/generated/prisma"
@@ -14,71 +8,64 @@ datasource db {
 }
 
 model Region {
-  id       String  @id @default(cuid())
-  nameUz   String
-  nameRu   String?
-  code     String  @unique
-  geometry Json
-  center   Json?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  districts District[]
+  id          String       @id @default(cuid())
+  nameUz      String
+  nameRu      String?
+  code        String       @unique
+  geometry    Json
+  center      Json?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  districts   District[]
+  regionUsers RegionUser[]
 
   @@index([nameUz])
   @@map("regions")
 }
 
 model District {
-  id       String  @id @default(cuid())
-  regionId String
-  nameUz   String
-  nameRu   String?
-  code     String  @unique
-  geometry Json
-  center   Json?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  region     Region     @relation(fields: [regionId], references: [id], onDelete: Cascade)
-  mahallas   Mahalla[]
-  streets    Street[]
+  id             String           @id @default(cuid())
+  regionId       String
+  nameUz         String
+  nameRu         String?
+  code           String           @unique
+  geometry       Json
+  center         Json?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  districtUsers  DistrictUser[]
+  region         Region           @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  mahallas       Mahalla[]
+  properties     Property[]
   streetPolygons StreetPolygone[]
-  properties Property[]
+  streets        Street[]
 
   @@index([nameUz])
   @@map("districts")
 }
 
 model Mahalla {
-  id       String  @id @default(cuid())
-  nameUz   String
-  nameRu   String?
-  code     String  @unique
-  geometry Json
-  center   Json?
-
-  uzKadName String?
-  geoCode   String?
-  oneId     String?
-  regulation String?
-  oldName    String?
-
-  hidden         Boolean @default(false)
+  id             String           @id @default(cuid())
+  nameUz         String
+  nameRu         String?
+  code           String           @unique
+  geometry       Json
+  center         Json?
+  uzKadName      String?
+  geoCode        String?
+  oneId          String?
+  hidden         Boolean          @default(false)
   mergedIntoId   String?
   mergedIntoName String?
+  districtId     String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  oldName        String?
+  regulation     String?
   regulationUrl  String?
-
-  district   District @relation(fields: [districtId], references: [id], onDelete: Cascade)
-  districtId String
-
-  streets Street[]
+  district       District         @relation(fields: [districtId], references: [id], onDelete: Cascade)
   streetPolygons StreetPolygone[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  streets        Street[]
 
   @@index([nameUz])
   @@index([hidden])
@@ -86,103 +73,135 @@ model Mahalla {
 }
 
 model Street {
-  id       String  @id @default(cuid())
-  nameUz   String
-  nameRu   String?
-  code     String  @unique
-  uzKadCode String?
-  geometry Json
-  center   Json?
-
-  type      String
-  oldNameId String?
-  oldName   String?
-
-  mahalla    Mahalla  @relation(fields: [mahallaId], references: [code], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  nameUz     String
+  nameRu     String?
+  code       String   @unique
+  geometry   Json
+  center     Json?
+  type       String
+  oldNameId  String?
+  oldName    String?
   mahallaId  String
-  district   District @relation(fields: [districtId], references: [id])
   districtId String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  uzKadCode  String?
+  district   District @relation(fields: [districtId], references: [id])
+  mahalla    Mahalla  @relation(fields: [mahallaId], references: [code], onDelete: Cascade)
 
   @@index([nameUz])
   @@map("streets")
 }
 
 model StreetPolygone {
-  id       String  @id @default(cuid())
-  nameUz   String
-
-  code     String  @unique
-  type     String
-  geometry Json
-
-  district   District @relation(fields: [districtId], references: [id])
+  id         String            @id @default(cuid())
+  nameUz     String
+  code       String            @unique
+  geometry   Json
   districtId String
-  mahalla    Mahalla  @relation(fields: [mahallaId], references: [id], onDelete: Cascade)
   mahallaId  String
-
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  type       String
   addressing StreetAddressing?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  district   District          @relation(fields: [districtId], references: [id])
+  mahalla    Mahalla           @relation(fields: [mahallaId], references: [id], onDelete: Cascade)
 
   @@map("street_polygons")
 }
 
 model Property {
-  id      String  @id @default(cuid())
-  owner   String?
-  address String?
-  type    String?
-
-  districtName   String?
-  districtNameUz String?
-  streetName     String?
-  houseNumber    String?
-
+  id              String    @id @default(cuid())
+  owner           String?
+  address         String?
+  type            String?
+  districtName    String?
+  districtNameUz  String?
+  streetName      String?
+  houseNumber     String?
   ownership       String?
   ownershipType   String?
   ownershipDate   String?
   ownershipNumber String?
-
   cadastralValue  String?
   cadastralNumber String?
   areaInDoc       String?
   areaReal        String?
   mahalla         String?
-
-  geometry Json
-  center   Json?
-
-
-  districtId String?
-  district   District? @relation(fields: [districtId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  geometry        Json
+  center          Json?
+  districtId      String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  district        District? @relation(fields: [districtId], references: [id], onDelete: Cascade)
 
   @@map("properties")
 }
 
 model StreetAddressing {
-  id       String  @id @default(cuid())
-  
-  streetPolygonId String @unique
+  id              String         @id @default(cuid())
+  streetPolygonId String         @unique
+  centerline      Json
+  addressPoints   Json
+  intervalMeters  Int            @default(20)
+  offsetMeters    Float          @default(5)
+  startNumber     Int            @default(0)
+  totalLength     Float
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  crossLines      Json           @default("[]")
   streetPolygon   StreetPolygone @relation(fields: [streetPolygonId], references: [id], onDelete: Cascade)
-  
-  centerline      Json    // LineString geometry
-  addressPoints   Json    // Array of address points with positions and numbers
-  crossLines      Json    @default("[]") // Array of cross lines
-  
-  intervalMeters  Int     @default(20)
-  offsetMeters    Float   @default(5)
-  startNumber     Int     @default(0)
-  totalLength     Float   // Total length of centerline in meters
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
   @@map("street_addressing")
+}
+
+model RegionUser {
+  id          String             @id @default(cuid())
+  fullName    String?
+  jshshir     String?            @unique
+  phoneNumber String?
+
+  position    RegionUserPosition
+  status      UserStatus         @default(active)
+
+  regionId    String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  region      Region             @relation(fields: [regionId], references: [id], onDelete: Cascade)
+
+  @@index([regionId])
+  @@index([jshshir])
+  @@index([status])
+  @@map("region_users")
+}
+
+model DistrictUser {
+  id          String     @id @default(cuid())
+  fullName    String?
+  jshshir     String?
+  phoneNumber String?
+
+  status      UserStatus @default(active)
+  
+  districtId  String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  district    District   @relation(fields: [districtId], references: [id], onDelete: Cascade)
+
+  @@index([districtId])
+  @@index([jshshir])
+  @@map("district_users")
+}
+
+
+
+enum RegionUserPosition {
+  boss
+  assistant
+}
+
+enum UserStatus {
+  active
+  vacant
 }

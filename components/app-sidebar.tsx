@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Map, LayoutDashboard, MapPin, BarChart3, LogOut } from 'lucide-react';
+import { Map, LayoutDashboard, MapPin, BarChart3, Users, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -37,6 +37,11 @@ const menuItems = [
     title: 'Tahlil',
     icon: BarChart3,
     href: '/analytics',
+  },
+  {
+    title: 'Xodimlar',
+    icon: Users,
+    href: '/dashboard/xodimlar',
   },
 ];
 
