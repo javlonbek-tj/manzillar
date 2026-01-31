@@ -2,7 +2,8 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { MapContainer } from './map-container';
 import { MapFilters } from './map-filters';
-import { MapControls } from './map-controls';
+import { MapControls, type MeasureMode } from './map-controls';
+import { MeasurementTool } from './measurement-tool';
 import { MahallaPopup } from './mahalla-popup';
 import { StreetPopup } from './street-popup';
 import { PropertyPopup } from './property-popup';
@@ -46,6 +47,7 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
   const [mapInstance, setMapInstance] = useState<LeafletMap | null>(null);
   const [zoomLevel, setZoomLevel] = useState(6);
   const [currentBaseMap, setCurrentBaseMap] = useState<BaseMapKey>('osm');
+  const [activeMeasureMode, setActiveMeasureMode] = useState<MeasureMode>(null);
   const [showMahallaPopup, setShowMahallaPopup] = useState(false);
   const [showStreetPopup, setShowStreetPopup] = useState(false);
   const [showPropertyPopup, setShowPropertyPopup] = useState(false);
@@ -188,8 +190,13 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
   const selectedStreetRef = useRef(filterState.selectedStreet);
   const selectedPropertyRef = useRef(filterState.selectedProperty);
   const selectedStreetPolygonRef = useRef(selectedStreetPolygon);
+  const activeMeasureModeRef = useRef(activeMeasureMode);
 
   // Sync refs with state
+  useEffect(() => {
+    activeMeasureModeRef.current = activeMeasureMode;
+  }, [activeMeasureMode]);
+
   useEffect(() => {
     selectedMahallaRef.current = filterState.selectedMahalla;
   }, [filterState.selectedMahalla]);
@@ -299,14 +306,17 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
         (feature: any, layer: any) => {
           layer.on({
             click: (e: any) => {
+              if (activeMeasureModeRef.current) return;
               L.DomEvent.stopPropagation(e);
               filterState.setSelectedRegion(feature.properties.id);
             },
             mouseover: (e: any) => {
+              if (activeMeasureModeRef.current) return;
               // Only change border if desired, but keep transparency
               e.target.setStyle({ weight: 4 });
             },
             mouseout: (e: any) => {
+              if (activeMeasureModeRef.current) return;
               const matches = feature.properties.id === filterState.selectedRegion;
               e.target.setStyle({ 
                 weight: matches ? MAP_LEVEL_STYLES.highlight.region.weight : MAP_LEVEL_STYLES.region.weight
@@ -342,13 +352,16 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
         (feature: any, layer: any) => {
           layer.on({
             click: (e: any) => {
+              if (activeMeasureModeRef.current) return;
               L.DomEvent.stopPropagation(e);
               filterState.setSelectedDistrict(feature.properties.id);
             },
             mouseover: (e: any) => {
+              if (activeMeasureModeRef.current) return;
               e.target.setStyle({ weight: 4 });
             },
             mouseout: (e: any) => {
+              if (activeMeasureModeRef.current) return;
               const matches = feature.properties.id === filterState.selectedDistrict;
               if (currentBaseMap === 'satellite') {
                 e.target.setStyle({ 
@@ -388,17 +401,20 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
           (feature: any, layer: any) => {
             layer.on({
               click: (e: any) => {
+                if (activeMeasureModeRef.current) return;
                 L.DomEvent.stopPropagation(e);
                 filterState.setSelectedMahalla(feature.properties.id);
                 setShowMahallaPopup(true);
               },
               mouseover: (e: any) => {
+                if (activeMeasureModeRef.current) return;
                 const isSelected = feature.properties.id === selectedMahallaRef.current;
                 if (!isSelected) {
                    e.target.setStyle(currentBaseMap === 'satellite' ? MAP_LEVEL_STYLES.satellite.highlight.mahalla : MAP_LEVEL_STYLES.highlight.mahalla);
                 }
               },
               mouseout: (e: any) => {
+                if (activeMeasureModeRef.current) return;
                 const isSelected = feature.properties.id === selectedMahallaRef.current;
                 if (!isSelected) {
                    e.target.setStyle(currentBaseMap === 'satellite' ? MAP_LEVEL_STYLES.satellite.mahalla : MAP_LEVEL_STYLES.mahalla);
@@ -424,6 +440,7 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
           (feature: any, layer: any) => {
             layer.on({
               click: (e: any) => {
+                if (activeMeasureModeRef.current) return;
                 L.DomEvent.stopPropagation(e);
                 // Apply highlight style immediately for instant feedback
                 e.target.setStyle(MAP_LEVEL_STYLES.highlight.street);
@@ -435,10 +452,12 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
                 setShowStreetPopup(true);
               },
               mouseover: (e: any) => {
+                if (activeMeasureModeRef.current) return;
                 // Preview highlight on hover
                 e.target.setStyle(MAP_LEVEL_STYLES.highlight.street);
               },
               mouseout: (e: any) => {
+                if (activeMeasureModeRef.current) return;
                 // Return to normal style (or stay highlighted if selected)
                 const isSelected = feature.properties.id === selectedStreetRef.current;
                 e.target.setStyle(isSelected ? MAP_LEVEL_STYLES.highlight.street : MAP_LEVEL_STYLES.street);
@@ -516,6 +535,7 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
         (feature: any, layer: any) => {
           layer.on({
             click: async (e: any) => {
+              if (activeMeasureModeRef.current) return;
               L.DomEvent.stopPropagation(e);
               setSelectedStreetPolygon(feature.properties.id);
               
@@ -539,12 +559,14 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
               setShowAddressDialog(true);
             },
             mouseover: (e: any) => {
+              if (activeMeasureModeRef.current) return;
               const isSelected = feature.properties.id === selectedStreetPolygonRef.current;
               if (!isSelected) {
                 e.target.setStyle(MAP_LEVEL_STYLES.highlight.streetPolygon);
               }
             },
             mouseout: (e: any) => {
+              if (activeMeasureModeRef.current) return;
               const isSelected = feature.properties.id === selectedStreetPolygonRef.current;
               if (!isSelected) {
                 const hasAddressing = districtAddressing.some(a => a.streetPolygonId === feature.properties.id);
@@ -577,6 +599,7 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
         (feature: any, layer: any) => {
           layer.on({
             click: (e: any) => {
+              if (activeMeasureModeRef.current) return;
               // Safely stop propagation to the map
               if (e.originalEvent) {
                 L.DomEvent.stopPropagation(e.originalEvent);
@@ -591,9 +614,11 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
               setShowPropertyPopup(true);
             },
             mouseover: (e: any) => {
+              if (activeMeasureModeRef.current) return;
               e.target.setStyle({ fillOpacity: 0.6 });
             },
             mouseout: (e: any) => {
+              if (activeMeasureModeRef.current) return;
               const isSelected = feature.properties.id === selectedPropertyRef.current;
               e.target.setStyle({ fillOpacity: isSelected ? 0.5 : 0.2 });
             }
@@ -769,6 +794,8 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
       <MapControls 
         currentBaseMap={currentBaseMap} 
         onBaseMapChange={setCurrentBaseMap}
+        activeMeasureMode={activeMeasureMode}
+        onMeasureModeChange={setActiveMeasureMode}
         onLayersToggle={() => console.log('Layers toggle')}
       />
 
@@ -880,6 +907,7 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
         <MapEventsHandler 
           onZoomChange={setZoomLevel} 
           onMapClick={() => {
+            if (activeMeasureModeRef.current) return;
             setSelectedStreetPolygon("");
             setGeneratedCrossLines([]);
             setGeneratedAddresses([]);
@@ -1043,6 +1071,8 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
             />
           </Popup>
         )}
+
+        <MeasurementTool mode={activeMeasureMode} onModeChange={setActiveMeasureMode} />
       </MapContainer>
 
 

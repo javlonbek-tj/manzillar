@@ -2,6 +2,7 @@
 
 import { Map, Navigation, Home, Waypoints, Building2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { motion } from 'framer-motion';
 
 interface AnalyticsCardsProps {
   counts: {
@@ -54,20 +55,28 @@ export function AnalyticsCards({ counts }: AnalyticsCardsProps) {
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-      {cards.map((card) => (
-        <Card key={card.title} className="hover:shadow-lg transition-all duration-300 border-gray-200 dark:border-gray-700 hover:border-primary/30 dark:hover:border-primary/30">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {card.title}
-            </CardTitle>
-            <div className={`p-2 rounded-lg ${card.bg}`}>
-              <card.icon className={`h-4 w-4 ${card.color}`} />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{card.value.toLocaleString()}</div>
-          </CardContent>
-        </Card>
+      {cards.map((card, index) => (
+        <motion.div
+          key={card.title}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: index * 0.1 }}
+          whileHover={{ y: -5 }}
+        >
+          <Card className="hover:shadow-lg transition-all duration-300 border-gray-200 dark:border-gray-700 hover:border-primary/30 dark:hover:border-primary/30 h-full">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                {card.title}
+              </CardTitle>
+              <div className={`p-2 rounded-lg ${card.bg}`}>
+                <card.icon className={`h-4 w-4 ${card.color}`} />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{card.value.toLocaleString()}</div>
+            </CardContent>
+          </Card>
+        </motion.div>
       ))}
     </div>
   );
