@@ -16,28 +16,37 @@ import { getGlobalStatistics, getRegionStatistics, getDistrictStatistics } from 
 import type { RegionData, PropertyData } from '@/types/map';
 import L from 'leaflet';
 import type { Map as LeafletMap } from 'leaflet';
-import { useMapEvents, Popup, Marker, Polyline, FeatureGroup } from 'react-leaflet';
-import { LayoutDashboard, Map as MapIcon, Navigation, Home, Waypoints, Loader2, CaseSensitive } from 'lucide-react';
+import { useMapEvents, Popup, Marker, Polyline, FeatureGroup, Polygon } from 'react-leaflet';
+import { LayoutDashboard, Map as MapIcon, Navigation, Home, Waypoints, Loader2, CaseSensitive, Grid2X2, LandPlot, Pencil, Trash2, Check, X } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import * as turf from '@turf/turf';
 import { AddressGenerationDialog } from './address-generation-dialog';
-import { generatePolygonAddressing, type AddressPoint, type CrossLine } from '@/lib/address-generator';
 import type { LineString } from 'geojson';
+import { generatePolygonAddressing, type AddressPoint, type CrossLine } from '@/lib/address-generator';
+import { DrawnPolygon } from '@/types/map';
+import { v4 as uuidv4 } from 'uuid';
 
-// Component to handle map-wide events
 const MapEventsHandler = ({ 
   onZoomChange, 
-  onMapClick 
+  onMapClick,
+  isDrawing,
+  onDrawingClick
 }: { 
   onZoomChange: (zoom: number) => void;
   onMapClick: () => void;
+  isDrawing: boolean;
+  onDrawingClick: (latlng: L.LatLng) => void;
 }) => {
   const map = useMapEvents({
     zoomend: () => {
       onZoomChange(map.getZoom());
     },
-    click: () => {
-      onMapClick();
+    click: (e) => {
+      if (isDrawing) {
+        onDrawingClick(e.latlng);
+      } else {
+        onMapClick();
+      }
     }
   });
   return null;
@@ -51,6 +60,12 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
   const [showMahallaPopup, setShowMahallaPopup] = useState(false);
   const [showStreetPopup, setShowStreetPopup] = useState(false);
   const [showPropertyPopup, setShowPropertyPopup] = useState(false);
+  const [showPropertyLabels, setShowPropertyLabels] = useState(true);
+  
+  // Drawing state
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [currentDrawingPoints, setCurrentDrawingPoints] = useState<L.LatLng[]>([]);
+  const [drawnPolygons, setDrawnPolygons] = useState<DrawnPolygon[]>([]);
   const [streetPopupPos, setStreetPopupPos] = useState<L.LatLng | null>(null);
   const [propertyPopupPos, setPropertyPopupPos] = useState<L.LatLng | null>(null);
   const [selectedPropertyData, setSelectedPropertyData] = useState<any>(null);
@@ -155,35 +170,61 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
       // 1. Initialize Map Panes for explicit stacking (Z-index)
       if (!mapInstance.getPane('regionsPane')) {
         const rPane = mapInstance.createPane('regionsPane');
-        rPane.style.zIndex = '250';
+        rPane.style.zIndex = '350';
         rPane.style.pointerEvents = 'none'; // Background only
       }
       if (!mapInstance.getPane('districtsPane')) {
         const dPane = mapInstance.createPane('districtsPane');
-        dPane.style.zIndex = '300';
+        dPane.style.zIndex = '400';
+      }
+      if (!mapInstance.getPane('mavzesPane')) {
+        const mavPane = mapInstance.createPane('mavzesPane');
+        mavPane.style.zIndex = '450';
       }
       if (!mapInstance.getPane('mahallasPane')) {
         const mPane = mapInstance.createPane('mahallasPane');
-        mPane.style.zIndex = '350';
+        mPane.style.zIndex = '500';
       }
       if (!mapInstance.getPane('streetsPane')) {
         const sPane = mapInstance.createPane('streetsPane');
-        sPane.style.zIndex = '400';
+        sPane.style.zIndex = '550';
       }
       if (!mapInstance.getPane('streetPolygonsPane')) {
         const spPane = mapInstance.createPane('streetPolygonsPane');
-        spPane.style.zIndex = '375'; // Between mahallas (350) and streets (400)
+        spPane.style.zIndex = '375'; // Between mahallas (350) and streets (400) - wait, adjust zIndex?
+        // Actually, let's stick to the user's intended order or the one I proposed:
+        // Regions(350) -> Districts(400) -> Mavzes(450) -> Mahallas(500) -> Streets(550) -> Propertes(600)
+        spPane.style.zIndex = '575'; 
       }
       if (!mapInstance.getPane('propertiesPane')) {
         const pPane = mapInstance.createPane('propertiesPane');
-        pPane.style.zIndex = '450';
+        pPane.style.zIndex = '600';
       }
 
       // Small delay to ensure panes are rendered
       const timer = setTimeout(() => setIsInitializing(false), 300);
       return () => clearTimeout(timer);
     }
-  }, [mapInstance, initialRegions.length > 0]);
+  }, [mapInstance, initialRegions.length]);
+
+  // Load drawn polygons from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('drawnPolygons');
+    if (saved) {
+      try {
+        setDrawnPolygons(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to parse saved polygons', e);
+      }
+    }
+  }, []);
+
+  // Save drawn polygons to localStorage
+  useEffect(() => {
+    if (!isInitializing) {
+      localStorage.setItem('drawnPolygons', JSON.stringify(drawnPolygons));
+    }
+  }, [drawnPolygons, isInitializing]);
 
   // Refs for tracking selection inside event handlers (avoiding stale closures)
   const selectedMahallaRef = useRef(filterState.selectedMahalla);
@@ -386,10 +427,9 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
     }
   }, [filterState.selectedRegion, filterState.districts, filterState.selectedDistrict, renderLayer, zoomToGeometry, initialRegions, clearLayers, filterState.setSelectedDistrict, currentBaseMap]);
 
-  // 3. When District Selected -> Render Mahallas AND Streets DATA
   useEffect(() => {
     if (filterState.selectedDistrict) {
-      if (filterState.mahallas.length > 0) {
+      if (filterState.mahallas.length > 0 && filterState.showMahallas) {
         renderLayer('mahallas', filterState.mahallas, 
           (feature: any) => {
             const isSelected = feature.properties.id === filterState.selectedMahalla;
@@ -428,6 +468,49 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
           false,
           'mahallasPane'
         );
+      } else if (filterState.mahallas.length > 0 && !filterState.showMahallas) {
+        clearLayer('mahallas');
+      }
+
+      // Render Mavzes
+      if (filterState.mavzes.length > 0 && filterState.showMavzes) {
+        renderLayer('mavzes', filterState.mavzes,
+          () => ({
+            fillColor: 'transparent', 
+            weight: 3,
+            opacity: 0.8,
+            color: '#7c3aed',
+            fillOpacity: 0,
+            dashArray: '5, 5'
+          }),
+          (feature: any, layer: any) => {
+            layer.on({
+              mouseover: (e: any) => {
+                e.target.setStyle({
+                  weight: 5,
+                  color: '#6d28d9', // Darker violet
+                  fillOpacity: 0.1, // Very subtle fill on hover for feedback
+                  dashArray: '' // Solid on hover
+                });
+              },
+              mouseout: (e: any) => {
+                e.target.setStyle({
+                  weight: 3,
+                  color: '#7c3aed',
+                  fillOpacity: 0,
+                  dashArray: '5, 5'
+                });
+              }
+            });
+            layer.getElement()?.style.setProperty('cursor', 'pointer');
+          },
+          undefined,
+          undefined,
+          false,
+          'mavzesPane'
+        );
+      } else {
+        clearLayer('mavzes');
       }
 
       // Render Streets at District level if available and showStreets is true
@@ -518,11 +601,44 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
       setStreetPolygons([]);
     }
     // Only re-run when DATA or VISIBILITY changes
-  }, [filterState.selectedDistrict, filterState.mahallas.length, filterState.streets.length, filterState.showStreets, filterState.showStreetLabels, renderLayer, zoomToGeometry, filterState.districts, clearLayers]);
+  }, [filterState.selectedDistrict, filterState.mahallas.length, filterState.mavzes.length, filterState.streets.length, filterState.showStreets, filterState.showMahallas, filterState.showMavzes, filterState.showStreetLabels, renderLayer, zoomToGeometry, filterState.districts, clearLayers]);
+
+  // Drawing logic
+  const handleDrawingClick = useCallback((latlng: L.LatLng) => {
+    setCurrentDrawingPoints(prev => [...prev, latlng]);
+  }, []);
+
+  const handleFinishDrawing = useCallback(() => {
+    if (currentDrawingPoints.length < 3) {
+      setIsDrawing(false);
+      setCurrentDrawingPoints([]);
+      return;
+    }
+
+    const newPolygon: DrawnPolygon = {
+      id: uuidv4(),
+      points: currentDrawingPoints.map(p => [p.lat, p.lng]),
+      color: '#ffffff',
+      createdAt: Date.now()
+    };
+
+    setDrawnPolygons(prev => [...prev, newPolygon]);
+    setIsDrawing(false);
+    setCurrentDrawingPoints([]);
+  }, [currentDrawingPoints]);
+
+  const handleClearPolygons = useCallback(() => {
+    setDrawnPolygons([]);
+    localStorage.removeItem('drawnPolygons');
+  }, []);
+
+  const handleRemoveOnePolygon = useCallback((id: string) => {
+    setDrawnPolygons(prev => prev.filter(p => p.id !== id));
+  }, []);
 
   // 3b. Render Street Polygons when data is available
   useEffect(() => {
-    if (mapInstance && filterState.selectedDistrict && streetPolygons.length > 0) {
+    if (mapInstance && filterState.selectedDistrict && streetPolygons.length > 0 && filterState.showStreetPolygons) {
       renderLayer('streetPolygons', streetPolygons,
         (feature: any) => {
           const isSelected = feature.properties.id === selectedStreetPolygon;
@@ -581,9 +697,11 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
         false,
         'streetPolygonsPane'
       );
+    } else {
+      clearLayer('streetPolygons');
     }
     // Only re-run when base data or visibility changes
-  }, [mapInstance, filterState.selectedDistrict, streetPolygons, selectedStreetPolygon, districtAddressing, renderLayer, clearLayer]);
+  }, [mapInstance, filterState.selectedDistrict, streetPolygons, selectedStreetPolygon, filterState.showStreetPolygons, districtAddressing, renderLayer, clearLayer]);
 
   // 3c. Render Property Polygons
   useEffect(() => {
@@ -784,6 +902,60 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
 
   return (
     <div className={`relative w-full h-full ${zoomLevel >= 16 ? 'zoom-detailed' : ''}`}>
+
+      {isDrawing && (
+        <div className="absolute top-24 left-1/2 -translate-x-1/2 z-[1001] flex items-center gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-2 rounded-2xl shadow-xl border border-white/20">
+          <div className="flex flex-col px-3">
+            <span className="text-sm font-bold text-slate-800 dark:text-white leading-tight">Poligon chizish</span>
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Kamida 3 ta nuqta tanlang</span>
+          </div>
+          <div className="w-px h-8 bg-slate-200 dark:bg-slate-700/50 mx-1" />
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleFinishDrawing}
+                  disabled={currentDrawingPoints.length < 3}
+                  className={`p-2 rounded-xl transition-all duration-300 ${
+                    currentDrawingPoints.length >= 3
+                      ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/20'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-400 cursor-not-allowed opacity-50'
+                  }`}
+                >
+                  <Check size={20} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Yakunlash</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => {
+                    setIsDrawing(false);
+                    setCurrentDrawingPoints([]);
+                  }}
+                  className="p-2 bg-white dark:bg-slate-700 text-rose-500 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all duration-300 shadow-sm border border-rose-100 dark:border-rose-900/30"
+                >
+                  <X size={20} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Bekor qilish</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
+
+      {drawnPolygons.length > 0 && !isDrawing && (
+        <div className="absolute top-24 right-4 z-[1001]">
+          <button
+            onClick={handleClearPolygons}
+            className="flex items-center gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md px-3 py-2 rounded-xl border border-rose-100 dark:border-rose-900/30 shadow-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all duration-300 text-sm font-medium"
+          >
+            <Trash2 size={16} />
+            Chizmalarni o'chirish
+          </button>
+        </div>
+      )}
       <MapFilters 
         regions={initialRegions} 
         filterState={filterState} 
@@ -795,7 +967,18 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
         currentBaseMap={currentBaseMap} 
         onBaseMapChange={setCurrentBaseMap}
         activeMeasureMode={activeMeasureMode}
-        onMeasureModeChange={setActiveMeasureMode}
+        onMeasureModeChange={(mode) => {
+          setActiveMeasureMode(mode);
+          if (mode) setIsDrawing(false);
+        }}
+        isDrawingMode={isDrawing}
+        onDrawingModeChange={(active) => {
+          setIsDrawing(active);
+          if (active) {
+            setActiveMeasureMode(null);
+            setCurrentDrawingPoints([]);
+          }
+        }}
         onLayersToggle={() => console.log('Layers toggle')}
       />
 
@@ -821,6 +1004,50 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
             </TooltipContent>
           </Tooltip>
 
+          {/* Toggle Mahallas */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => filterState.setShowMahallas(!filterState.showMahallas)}
+                className={`p-2.5 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-all duration-300 hover:scale-110 active:scale-95 border-2 ${
+                  !filterState.showMahallas 
+                    ? 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-md text-slate-400 border-transparent opacity-80' 
+                    : 'bg-white dark:bg-slate-800 text-emerald-500 border-emerald-200 dark:border-emerald-900/50 ring-4 ring-emerald-500/10'
+                }`}
+              >
+                <div className="relative">
+                  <Home className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12" />
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border border-white" />
+                </div>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">
+              {filterState.showMahallas ? "Mahallalarni yashirish" : "Mahallalarni ko'rsatish"}
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Toggle Mavzes */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => filterState.setShowMavzes(!filterState.showMavzes)}
+                className={`p-2.5 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-all duration-300 hover:scale-110 active:scale-95 border-2 ${
+                  !filterState.showMavzes 
+                    ? 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-md text-slate-400 border-transparent opacity-80' 
+                    : 'bg-white dark:bg-slate-800 text-violet-500 border-violet-200 dark:border-violet-900/50 ring-4 ring-violet-500/10'
+                }`}
+              >
+                <div className="relative">
+                  <Grid2X2 className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12" />
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-violet-500 rounded-full border border-white" />
+                </div>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">
+              {filterState.showMavzes ? "Mavzelarni yashirish" : "Mavzelarni ko'rsatish"}
+            </TooltipContent>
+          </Tooltip>
+
           {/* Toggle Streets (Lines and Labels) */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -837,6 +1064,25 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
             </TooltipTrigger>
             <TooltipContent side="right" className="font-medium">
               {filterState.showStreets ? "Ko'chalarni yashirish" : "Ko'chalarni ko'rsatish"}
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Toggle Street Polygons */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => filterState.setShowStreetPolygons(!filterState.showStreetPolygons)}
+                className={`p-2.5 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-all duration-300 hover:scale-110 active:scale-95 border-2 ${
+                  !filterState.showStreetPolygons 
+                    ? 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-md text-slate-400 border-transparent opacity-80' 
+                    : 'bg-white dark:bg-slate-800 text-orange-500 border-orange-200 dark:border-orange-900/50 ring-4 ring-orange-500/10'
+                }`}
+              >
+                <LandPlot className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">
+              {filterState.showStreetPolygons ? "Polyganlarni yashirish" : "Polyganlarni ko'rsatish"}
             </TooltipContent>
           </Tooltip>
 
@@ -908,12 +1154,65 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
           onZoomChange={setZoomLevel} 
           onMapClick={() => {
             if (activeMeasureModeRef.current) return;
+            setShowMahallaPopup(false);
+            setShowStreetPopup(false);
+            setShowPropertyPopup(false);
             setSelectedStreetPolygon("");
             setGeneratedCrossLines([]);
             setGeneratedAddresses([]);
             console.log('🧹 Map clicked outside features - clearing selection');
           }} 
+          isDrawing={isDrawing}
+          onDrawingClick={handleDrawingClick}
         />
+
+        {/* Render Drawn Polygons */}
+        {drawnPolygons.map(polygon => (
+          <Polygon
+            key={polygon.id}
+            positions={polygon.points}
+            pathOptions={{
+              color: polygon.color || '#ffffff',
+              weight: 3,
+              fillOpacity: 0.1,
+              dashArray: '10, 5'
+            }}
+          >
+            <Popup>
+              <div className="p-2">
+                <button
+                  onClick={() => handleRemoveOnePolygon(polygon.id)}
+                  className="flex items-center gap-2 text-rose-500 hover:text-rose-600 transition-colors text-sm font-medium"
+                >
+                  <Trash2 size={14} />
+                  O'chirish
+                </button>
+              </div>
+            </Popup>
+          </Polygon>
+        ))}
+
+        {/* Render Current Drawing Line */}
+        {isDrawing && currentDrawingPoints.length > 0 && (
+          <>
+            <Polyline 
+              positions={currentDrawingPoints}
+              pathOptions={{ color: '#ffffff', weight: 3, dashArray: '5, 5' }}
+            />
+            {currentDrawingPoints.map((point, idx) => (
+              <Marker 
+                key={`drawing-point-${idx}`}
+                position={point}
+                icon={L.divIcon({
+                  className: 'drawing-point-marker',
+                  html: `<div style="background: white; border: 2px solid #3b82f6; width: 10px; height: 10px; border-radius: 50%;"></div>`,
+                  iconSize: [10, 10],
+                  iconAnchor: [5, 5]
+                })}
+              />
+            ))}
+          </>
+        )}
         
         {/* Render cross lines for all addressed streets at high zoom levels */}
         <FeatureGroup>

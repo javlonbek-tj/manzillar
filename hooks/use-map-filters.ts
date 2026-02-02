@@ -1,8 +1,6 @@
-'use client';
-
 import { useState, useEffect } from 'react';
-import { getDistricts, getMahallas, getStreets, getStreetsByDistrict } from '@/lib/data';
-import type { DistrictData, MahallaData } from '@/types/map';
+import { getDistricts, getMahallas, getStreets, getStreetsByDistrict, getMavzes } from '@/lib/data';
+import type { DistrictData, MahallaData, MavzeData } from '@/types/map';
 
 
 export function useMapFilters() {
@@ -11,13 +9,17 @@ export function useMapFilters() {
   const [selectedDistrict, setSelectedDistrict] = useState<string>("");
   const [mahallas, setMahallas] = useState<MahallaData[]>([]);
   const [selectedMahalla, setSelectedMahalla] = useState<string>("");
+  const [mavzes, setMavzes] = useState<MavzeData[]>([]);
   const [streets, setStreets] = useState<any[]>([]);
   const [selectedStreet, setSelectedStreet] = useState<string>("");
   const [selectedProperty, setSelectedProperty] = useState<string>("");
   const [showProperties, setShowProperties] = useState(true);
   const [showStreets, setShowStreets] = useState(true);
+  const [showMahallas, setShowMahallas] = useState(true);
+  const [showMavzes, setShowMavzes] = useState(true);
   const [showStreetLabels, setShowStreetLabels] = useState(true);
   const [showPropertyLabels, setShowPropertyLabels] = useState(true);
+  const [showStreetPolygons, setShowStreetPolygons] = useState(true);
   
   useEffect(() => {
     if (selectedRegion) {
@@ -25,6 +27,7 @@ export function useMapFilters() {
       getDistricts(selectedRegion).then(setDistricts);
       setSelectedDistrict("");
       setMahallas([]);
+      setMavzes([]);
       setSelectedMahalla("");
       setStreets([]);
       setSelectedStreet("");
@@ -32,6 +35,7 @@ export function useMapFilters() {
       setDistricts([]);
       setSelectedDistrict("");
       setMahallas([]);
+      setMavzes([]);
       setSelectedMahalla("");
       setStreets([]);
       setSelectedStreet("");
@@ -41,13 +45,16 @@ export function useMapFilters() {
   useEffect(() => {
     if (selectedDistrict) {
       setMahallas([]); // Clear immediately
+      setMavzes([]);  // Clear immediately
       setStreets([]);  // Clear immediately
       getMahallas(selectedDistrict).then(setMahallas);
+      getMavzes(selectedDistrict).then(setMavzes);
       getStreetsByDistrict(selectedDistrict).then(setStreets);
       setSelectedMahalla("");
       setSelectedStreet("");
     } else {
       setMahallas([]);
+      setMavzes([]);
       setSelectedMahalla("");
       setStreets([]);
       setSelectedStreet("");
@@ -72,6 +79,7 @@ export function useMapFilters() {
     mahallas,
     selectedMahalla,
     setSelectedMahalla,
+    mavzes,
     streets,
     selectedStreet,
     setSelectedStreet,
@@ -81,9 +89,15 @@ export function useMapFilters() {
     setShowProperties,
     showStreets,
     setShowStreets,
+    showMahallas,
+    setShowMahallas,
+    showMavzes,
+    setShowMavzes,
     showStreetLabels,
     setShowStreetLabels,
     showPropertyLabels,
     setShowPropertyLabels,
+    showStreetPolygons,
+    setShowStreetPolygons,
   };
 }

@@ -39,6 +39,7 @@ model District {
   properties     Property[]
   streetPolygons StreetPolygone[]
   streets        Street[]
+  mavzes         Mavze[]
 
   @@index([nameUz])
   @@map("districts")
@@ -194,6 +195,17 @@ model DistrictUser {
   @@map("district_users")
 }
 
+model Mavze {
+  id             String           @id @default(cuid())
+  geometry       Json
+  center         Json?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  districtId     String
+  district       District         @relation(fields: [districtId], references: [id], onDelete: Cascade)
+
+  @@map("mavzes")
+}
 
 
 enum RegionUserPosition {

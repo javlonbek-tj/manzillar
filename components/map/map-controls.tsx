@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Map, Satellite, Ruler, Square, X } from 'lucide-react';
+import { Map, Satellite, Ruler, Square, X, Pencil } from 'lucide-react';
 import { BaseMapKey } from '@/services/baseMaps';
 
 export type MeasureMode = 'distance' | 'area' | null;
@@ -12,6 +12,8 @@ interface MapControlsProps {
   activeMeasureMode: MeasureMode;
   onMeasureModeChange: (mode: MeasureMode) => void;
   onLayersToggle?: () => void;
+  isDrawingMode: boolean;
+  onDrawingModeChange: (active: boolean) => void;
 }
 
 import { 
@@ -26,7 +28,9 @@ export const MapControls = ({
   onBaseMapChange,
   activeMeasureMode,
   onMeasureModeChange,
-  onLayersToggle 
+  onLayersToggle,
+  isDrawingMode,
+  onDrawingModeChange
 }: MapControlsProps) => {
   return (
     <TooltipProvider delayDuration={300}>
@@ -102,6 +106,27 @@ export const MapControls = ({
           </TooltipTrigger>
           <TooltipContent side="left" className="font-medium">
             Maydonni o'lchash
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => {
+                onDrawingModeChange(!isDrawingMode);
+                if (!isDrawingMode) onMeasureModeChange(null);
+              }}
+              className={`w-12 h-12 rounded-full flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-all duration-300 hover:scale-110 active:scale-95 border-2 ${
+                isDrawingMode 
+                  ? 'bg-blue-600 text-white border-blue-400' 
+                  : 'bg-white/90 dark:bg-slate-800/90 backdrop-blur-md text-slate-600 dark:text-slate-200 border-transparent hover:bg-white dark:hover:bg-slate-700'
+              }`}
+            >
+              <Pencil size={22} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="left" className="font-medium">
+            Poligon chizish
           </TooltipContent>
         </Tooltip>
 

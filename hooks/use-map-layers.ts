@@ -8,6 +8,7 @@ export function useMapLayers(map: LeafletMap | null) {
   const layersRef = useRef<{
     regions?: GeoJSON;
     districts?: GeoJSON;
+    mavzes?: GeoJSON;
     mahallas?: GeoJSON;
     streets?: GeoJSON;
     streetPolygons?: GeoJSON;

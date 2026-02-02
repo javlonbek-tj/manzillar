@@ -35,6 +35,13 @@ export interface MahallaData {
   regulation?: string | null;
   oldName?: string | null;
 }
+  
+export interface MavzeData {
+  id: string;
+  geometry: GeoJSONGeometry;
+  center?: { lat: number; lng: number } | null;
+  districtId: string;
+}
 
 export interface PropertyData {
   id: string;
@@ -50,4 +57,11 @@ export interface PropertyData {
   cadastralNumber?: string | null;
   areaInDoc?: string | null;
   areaReal?: string | null;
+}
+
+export interface DrawnPolygon {
+  id: string;
+  points: [number, number][]; // [lat, lng]
+  color?: string;
+  createdAt: number;
 }

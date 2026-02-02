@@ -1,7 +1,7 @@
 'use server';
 
 import prisma from './prisma';
-import type { RegionData, DistrictData, MahallaData } from '@/types/map';
+import type { RegionData, DistrictData, MahallaData, MavzeData } from '@/types/map';
 
 // Fetch all regions
 export async function getRegions(): Promise<RegionData[]> {
@@ -43,6 +43,20 @@ export async function getMahallas(districtId: string): Promise<MahallaData[]> {
     return mahallas as unknown as MahallaData[];
   } catch (error) {
     console.error('Failed to fetch mahallas:', error);
+    return [];
+  }
+}
+
+// Fetch mavzes for a specific district
+export async function getMavzes(districtId: string): Promise<MavzeData[]> {
+  if (!districtId) return [];
+  try {
+    const mavzes = await prisma.mavze.findMany({
+      where: { districtId },
+    });
+    return mavzes as unknown as MavzeData[];
+  } catch (error) {
+    console.error('Failed to fetch mavzes:', error);
     return [];
   }
 }
