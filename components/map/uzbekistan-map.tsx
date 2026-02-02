@@ -17,7 +17,7 @@ import type { RegionData, PropertyData } from '@/types/map';
 import L from 'leaflet';
 import type { Map as LeafletMap } from 'leaflet';
 import { useMapEvents, Popup, Marker, Polyline, FeatureGroup, Polygon } from 'react-leaflet';
-import { LayoutDashboard, Map as MapIcon, Navigation, Home, Waypoints, Loader2, CaseSensitive, Grid2X2, LandPlot, Pencil, Trash2, Check, X } from 'lucide-react';
+import { LayoutDashboard, Map as MapIcon, Navigation, Home, Waypoints, Loader2, CaseSensitive, Grid2X2, LandPlot, Pencil, Trash2, Check, X, Hash } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import * as turf from '@turf/turf';
 import { AddressGenerationDialog } from './address-generation-dialog';
@@ -25,6 +25,7 @@ import type { LineString } from 'geojson';
 import { generatePolygonAddressing, type AddressPoint, type CrossLine } from '@/lib/address-generator';
 import { DrawnPolygon } from '@/types/map';
 import { v4 as uuidv4 } from 'uuid';
+import { MapLayersControl } from './map-layers-control';
 
 const MapEventsHandler = ({ 
   onZoomChange, 
@@ -946,7 +947,7 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
       )}
 
       {drawnPolygons.length > 0 && !isDrawing && (
-        <div className="absolute top-24 right-4 z-[1001]">
+        <div className="absolute top-[10px] left-[54px] z-[1001]">
           <button
             onClick={handleClearPolygons}
             className="flex items-center gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md px-3 py-2 rounded-xl border border-rose-100 dark:border-rose-900/30 shadow-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all duration-300 text-sm font-medium"
@@ -983,148 +984,9 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
       />
 
       {/* Map Control Toggles - Bottom Left */}
-      <TooltipProvider delayDuration={300}>
-        <div className="absolute left-4 bottom-10 z-[1000] flex flex-col gap-2">
-          {/* Toggle Properties */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => filterState.setShowProperties(!filterState.showProperties)}
-                className={`p-2.5 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-all duration-300 hover:scale-110 active:scale-95 border-2 ${
-                  !filterState.showProperties 
-                    ? 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-md text-slate-400 border-transparent opacity-80' 
-                    : 'bg-white dark:bg-slate-800 text-amber-500 border-amber-200 dark:border-amber-900/50 ring-4 ring-amber-500/10'
-                }`}
-              >
-                <Home className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">
-              {filterState.showProperties ? "Ko'chmas mulklarni yashirish" : "Ko'chmas mulklarni ko'rsatish"}
-            </TooltipContent>
-          </Tooltip>
-
-          {/* Toggle Mahallas */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => filterState.setShowMahallas(!filterState.showMahallas)}
-                className={`p-2.5 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-all duration-300 hover:scale-110 active:scale-95 border-2 ${
-                  !filterState.showMahallas 
-                    ? 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-md text-slate-400 border-transparent opacity-80' 
-                    : 'bg-white dark:bg-slate-800 text-emerald-500 border-emerald-200 dark:border-emerald-900/50 ring-4 ring-emerald-500/10'
-                }`}
-              >
-                <div className="relative">
-                  <Home className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12" />
-                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full border border-white" />
-                </div>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">
-              {filterState.showMahallas ? "Mahallalarni yashirish" : "Mahallalarni ko'rsatish"}
-            </TooltipContent>
-          </Tooltip>
-
-          {/* Toggle Mavzes */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => filterState.setShowMavzes(!filterState.showMavzes)}
-                className={`p-2.5 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-all duration-300 hover:scale-110 active:scale-95 border-2 ${
-                  !filterState.showMavzes 
-                    ? 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-md text-slate-400 border-transparent opacity-80' 
-                    : 'bg-white dark:bg-slate-800 text-violet-500 border-violet-200 dark:border-violet-900/50 ring-4 ring-violet-500/10'
-                }`}
-              >
-                <div className="relative">
-                  <Grid2X2 className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12" />
-                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-violet-500 rounded-full border border-white" />
-                </div>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">
-              {filterState.showMavzes ? "Mavzelarni yashirish" : "Mavzelarni ko'rsatish"}
-            </TooltipContent>
-          </Tooltip>
-
-          {/* Toggle Streets (Lines and Labels) */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => filterState.setShowStreets(!filterState.showStreets)}
-                className={`p-2.5 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-all duration-300 hover:scale-110 active:scale-95 border-2 ${
-                  !filterState.showStreets 
-                    ? 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-md text-slate-400 border-transparent opacity-80' 
-                    : 'bg-white dark:bg-slate-800 text-purple-500 border-purple-200 dark:border-purple-900/50 ring-4 ring-purple-500/10'
-                }`}
-              >
-                <Waypoints className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">
-              {filterState.showStreets ? "Ko'chalarni yashirish" : "Ko'chalarni ko'rsatish"}
-            </TooltipContent>
-          </Tooltip>
-
-          {/* Toggle Street Polygons */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => filterState.setShowStreetPolygons(!filterState.showStreetPolygons)}
-                className={`p-2.5 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-all duration-300 hover:scale-110 active:scale-95 border-2 ${
-                  !filterState.showStreetPolygons 
-                    ? 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-md text-slate-400 border-transparent opacity-80' 
-                    : 'bg-white dark:bg-slate-800 text-orange-500 border-orange-200 dark:border-orange-900/50 ring-4 ring-orange-500/10'
-                }`}
-              >
-                <LandPlot className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">
-              {filterState.showStreetPolygons ? "Polyganlarni yashirish" : "Polyganlarni ko'rsatish"}
-            </TooltipContent>
-          </Tooltip>
-
-          {/* Toggle Street Labels */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => filterState.setShowStreetLabels(!filterState.showStreetLabels)}
-                className={`p-2.5 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-all duration-300 hover:scale-110 active:scale-95 border-2 ${
-                  !filterState.showStreetLabels 
-                    ? 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-md text-slate-400 border-transparent opacity-80' 
-                    : 'bg-white dark:bg-slate-800 text-blue-500 border-blue-200 dark:border-blue-900/50 ring-4 ring-blue-500/10'
-                }`}
-              >
-                <CaseSensitive className="w-5 h-5 transition-transform duration-300 group-hover:-rotate-12" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">
-              {filterState.showStreetLabels ? "Ko'cha nomlarini yashirish" : "Ko'cha nomlarini ko'rsatish"}
-            </TooltipContent>
-          </Tooltip>
-
-          {/* Toggle Property Labels */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => filterState.setShowPropertyLabels(!filterState.showPropertyLabels)}
-                className={`p-2.5 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-all duration-300 hover:scale-110 active:scale-95 border-2 ${
-                  !filterState.showPropertyLabels 
-                    ? 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-md text-slate-400 border-transparent opacity-80' 
-                    : 'bg-white dark:bg-slate-800 text-green-500 border-green-200 dark:border-green-900/50 ring-4 ring-green-500/10'
-                }`}
-              >
-                <span className="text-lg font-bold transition-transform duration-300">#</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">
-              {filterState.showPropertyLabels ? "Uy raqamlarini yashirish" : "Uy raqamlarini ko'rsatish"}
-            </TooltipContent>
-          </Tooltip>
+        <div className="absolute bottom-10 left-4 z-[400] flex flex-col-reverse items-start gap-2">
+           <MapLayersControl filterState={filterState} />
         </div>
-      </TooltipProvider>
 
       <MapStatistics stats={displayStats} />
 
@@ -1214,16 +1076,19 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
           </>
         )}
         
-        {/* Render cross lines for all addressed streets at high zoom levels */}
-        <FeatureGroup>
-          {/* 1. Preview/Active selection cross lines */}
-          {generatedCrossLines.map((crossLine) => (
-            <Polyline
-              key={`preview-${crossLine.id}`}
-              positions={[
-                [crossLine.start[1], crossLine.start[0]],
-                [crossLine.end[1], crossLine.end[0]]
-              ]}
+        {/* Render cross lines and addresses based on dedicated toggle */}
+        {filterState.showAddressing && (
+          <>
+            {/* Render cross lines for all addressed streets at high zoom levels */}
+            <FeatureGroup>
+              {/* 1. Preview/Active selection cross lines */}
+              {generatedCrossLines.map((crossLine) => (
+                <Polyline
+                  key={`preview-${crossLine.id}`}
+                  positions={[
+                    [crossLine.start[1], crossLine.start[0]],
+                    [crossLine.end[1], crossLine.end[0]]
+                  ]}
               pathOptions={{
                 color: '#ffffff',
                 weight: 2,
@@ -1318,83 +1183,85 @@ const UzbekistanMap = ({ initialRegions }: { initialRegions: RegionData[] }) => 
             })}
           </React.Fragment>
         ))}
+      </>
+    )}
         
-        {showStreetPopup && filterState.selectedStreet && streetPopupPos && streetDetails && (
-          <>
-            <Popup 
-              position={streetPopupPos}
-              closeButton={false}
-              autoPan={true}
-              className="custom-street-popup"
-              offset={[0, -10]}
-            >
-              <StreetPopup 
-                {...streetDetails}
-                onClose={() => setShowStreetPopup(false)}
-              />
-            </Popup>
-            
-            {/* Direction Arrow at the end point */}
-            {streetDetails.endPoint && (
-              <Marker 
-                position={L.latLng(streetDetails.endPoint.lat, streetDetails.endPoint.lng)}
-                icon={L.divIcon({
-                  className: 'street-direction-arrow',
-                  html: `<div style="transform: rotate(${streetDetails.direction || 0}deg); color: #f59e0b; display: flex; align-items: center; justify-content: center;">
-                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                      <path d="M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z" />
-                    </svg>
-                  </div>`,
-                  iconSize: [24, 24],
-                  iconAnchor: [12, 12]
-                })}
-              />
-            )}
-          </>
+    {showStreetPopup && filterState.selectedStreet && streetPopupPos && streetDetails && (
+      <>
+        <Popup 
+          position={streetPopupPos}
+          closeButton={false}
+          autoPan={true}
+          className="custom-street-popup"
+          offset={[0, -10]}
+        >
+          <StreetPopup 
+            {...streetDetails}
+            onClose={() => setShowStreetPopup(false)}
+          />
+        </Popup>
+        
+        {/* Direction Arrow at the end point */}
+        {streetDetails.endPoint && (
+          <Marker 
+            position={L.latLng(streetDetails.endPoint.lat, streetDetails.endPoint.lng)}
+            icon={L.divIcon({
+              className: 'street-direction-arrow',
+              html: `<div style="transform: rotate(${streetDetails.direction || 0}deg); color: #f59e0b; display: flex; align-items: center; justify-content: center;">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                  <path d="M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z" />
+                </svg>
+              </div>`,
+              iconSize: [24, 24],
+              iconAnchor: [12, 12]
+            })}
+          />
         )}
+      </>
+    )}
 
-        {showPropertyPopup && selectedPropertyData && propertyPopupPos && (
-          <Popup 
-            position={propertyPopupPos}
-            closeButton={false}
-            autoPan={true}
-            className="custom-property-popup"
-            offset={[0, -10]}
-            eventHandlers={{
-              remove: () => setShowPropertyPopup(false)
-            }}
-          >
-            <PropertyPopup 
-              property={selectedPropertyData}
-              onClose={() => setShowPropertyPopup(false)}
-            />
-          </Popup>
-        )}
+    {showPropertyPopup && selectedPropertyData && propertyPopupPos && (
+      <Popup 
+        position={propertyPopupPos}
+        closeButton={false}
+        autoPan={true}
+        className="custom-property-popup"
+        offset={[0, -10]}
+        eventHandlers={{
+          remove: () => setShowPropertyPopup(false)
+        }}
+      >
+        <PropertyPopup 
+          property={selectedPropertyData}
+          onClose={() => setShowPropertyPopup(false)}
+        />
+      </Popup>
+    )}
 
-        <MeasurementTool mode={activeMeasureMode} onModeChange={setActiveMeasureMode} />
-      </MapContainer>
+    <MeasurementTool mode={activeMeasureMode} onModeChange={setActiveMeasureMode} />
+  </MapContainer>
 
 
-      {/* Internal Loading Overlay */}
-      {isInitializing && (
-        <div className="absolute inset-0 z-[5000] flex items-center justify-center bg-background/40 backdrop-blur-[1px] animate-in fade-in duration-500">
-          <div className="flex flex-col items-center gap-3 p-6 bg-background/80 backdrop-blur-md rounded-2xl shadow-2xl border border-primary/10">
-            <Loader2 className="size-8 text-primary animate-spin" />
-            <span className="text-sm font-medium text-foreground/80">Ma'lumotlar yuklanmoqda...</span>
-          </div>
-        </div>
-      )}
-
-      {/* Address Generation Dialog */}
-      <AddressGenerationDialog
-        open={showAddressDialog}
-        onOpenChange={setShowAddressDialog}
-        polygonData={selectedPolygonForAddressing}
-        onGenerate={handleGenerateAddresses}
-        isEditing={!!districtAddressing.find(a => a.streetPolygonId === selectedPolygonForAddressing?.id)}
-        initialData={districtAddressing.find(a => a.streetPolygonId === selectedPolygonForAddressing?.id)}
-      />
+  {/* Internal Loading Overlay */}
+  {isInitializing && (
+    <div className="absolute inset-0 z-[5000] flex items-center justify-center bg-background/40 backdrop-blur-[1px] animate-in fade-in duration-500">
+      <div className="flex flex-col items-center gap-3 p-6 bg-background/80 backdrop-blur-md rounded-2xl shadow-2xl border border-primary/10">
+        <Loader2 className="size-8 text-primary animate-spin" />
+        <span className="text-sm font-medium text-foreground/80">Ma'lumotlar yuklanmoqda...</span>
+      </div>
     </div>
-  );
+  )}
+
+  {/* Address Generation Dialog */}
+  <AddressGenerationDialog
+    open={showAddressDialog}
+    onOpenChange={setShowAddressDialog}
+    polygonData={selectedPolygonForAddressing}
+    onGenerate={handleGenerateAddresses}
+    isEditing={!!districtAddressing.find(a => a.streetPolygonId === selectedPolygonForAddressing?.id)}
+    initialData={districtAddressing.find(a => a.streetPolygonId === selectedPolygonForAddressing?.id)}
+  />
+</div>
+);
 }
 export default UzbekistanMap;

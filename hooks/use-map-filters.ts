@@ -20,6 +20,7 @@ export function useMapFilters() {
   const [showStreetLabels, setShowStreetLabels] = useState(true);
   const [showPropertyLabels, setShowPropertyLabels] = useState(true);
   const [showStreetPolygons, setShowStreetPolygons] = useState(true);
+  const [showAddressing, setShowAddressing] = useState(true);
   
   useEffect(() => {
     if (selectedRegion) {
@@ -99,5 +100,7 @@ export function useMapFilters() {
     setShowPropertyLabels,
     showStreetPolygons,
     setShowStreetPolygons,
+    showAddressing,
+    setShowAddressing,
   };
 }
