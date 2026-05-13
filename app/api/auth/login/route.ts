@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Hardcoded credentials
-const VALID_USERNAME = 'manzil';
-const VALID_PASSWORD = 'manzilabc123';
+const VALID_USERNAME = process.env.AUTH_USERNAME!;
+const VALID_PASSWORD = process.env.AUTH_PASSWORD!;
 
 export async function POST(request: NextRequest) {
   try {
